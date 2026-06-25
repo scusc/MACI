@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/azuread"
       version = "~> 2.47"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 
   # For a production setup, we would store state in an Azure Storage Account.

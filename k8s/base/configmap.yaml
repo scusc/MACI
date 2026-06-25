@@ -1,0 +1,29 @@
+# ── ConfigMap ─────────────────────────────────────────────────────────
+# 🎓 LESSON: ConfigMap vs Secret
+# ConfigMaps hold NON-SENSITIVE configuration: app name, log level, etc.
+# Secrets hold SENSITIVE data: passwords, API keys.
+#
+# We use ConfigMaps for settings that are safe to be visible.
+# For actual secrets (DB password, JWT key), we use Key Vault + Workload Identity.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maci-config
+  namespace: maci
+  labels:
+    app.kubernetes.io/part-of: maci
+data:
+  APP_NAME: "MACI"
+  APP_VERSION: "0.1.0"
+  DEBUG: "false"
+  API_PREFIX: "/api/v1"
+  LLM_MODEL: "gemini/gemini-2.0-flash"
+  # DB host will be populated after terraform apply
+  DATABASE_HOST: "psql2-maci-dev.postgres.database.azure.com"
+  DATABASE_NAME: "maci"
+  DATABASE_USER: "maciadmin"
+  DATABASE_PORT: "5432"
+  DATABASE_SSL: "require"
+  # Key Vault URI for the application to fetch secrets at runtime
+  KEY_VAULT_URI: "https://kv-maci-dev-123.vault.azure.net/"

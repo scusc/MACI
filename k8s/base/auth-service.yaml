@@ -1,0 +1,89 @@
+# ── Auth Service Deployment ───────────────────────────────────────────
+# 🎓 LESSON: Deployments
+# A Deployment is a declarative statement: "I want 2 replicas of
+# auth-service running at all times." Kubernetes ensures this is true.
+# If a pod crashes, K8s immediately spins up a replacement.
+# If you push a new image, K8s does a rolling update — zero downtime.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: maci
+  labels:
+    app: auth-service
+    app.kubernetes.io/part-of: maci
+spec:
+  replicas: 1  # Start with 1 for learning. Scale up later.
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        azure.workload.identity/use: "true"  # Enable Workload Identity injection
+    spec:
+      serviceAccountName: maci-workload-sa  # Use our federated ServiceAccount
+      containers:
+        - name: auth-service
+          image: acrmacidev123.azurecr.io/maci-auth-service:latest
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: maci-config
+          # 🎓 LESSON: Resource Requests & Limits
+          # Requests = guaranteed minimum (used for scheduling)
+          # Limits = hard maximum (pod gets OOM-killed if it exceeds)
+          # Without these, a single runaway pod can starve all others.
+          resources:
+            requests:
+              cpu: "100m"       # 0.1 CPU cores
+              memory: "128Mi"   # 128 MB
+            limits:
+              cpu: "500m"       # 0.5 CPU cores
+              memory: "512Mi"   # 512 MB
+          # 🎓 LESSON: Health Probes
+          # livenessProbe: "Is this pod alive?" If it fails, K8s RESTARTS the pod.
+          # readinessProbe: "Is this pod ready for traffic?" If it fails, K8s
+          #   removes it from the Service load balancer (no traffic sent to it).
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+# ── Auth Service — Kubernetes Service ─────────────────────────────────
+# 🎓 LESSON: Services
+# Pods are ephemeral — they get new IP addresses every time they restart.
+# A Service provides a STABLE DNS name (auth-service.maci.svc.cluster.local)
+# that always routes to healthy pods, regardless of their IPs.
+# Type: ClusterIP means it's only accessible WITHIN the cluster.
+# (We'll add an Ingress/API Gateway in Sprint 6 for external access.)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: maci
+  labels:
+    app: auth-service
+    app.kubernetes.io/part-of: maci
+spec:
+  type: ClusterIP
+  selector:
+    app: auth-service
+  ports:
+    - port: 80          # Other services call http://auth-service:80
+      targetPort: 8000   # Routes to the container's port 8000
+      protocol: TCP

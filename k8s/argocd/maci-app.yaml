@@ -1,0 +1,35 @@
+# ── ArgoCD Application Definition ───────────────────────────────────────
+#
+# 🎓 LESSON: The GitOps "Application"
+# This is a Custom Resource Definition (CRD) provided by ArgoCD.
+# It bridges your GitHub repository and your Kubernetes cluster.
+#
+# We tell it:
+# 1. Source: Where is the YAML? (GitHub: scusc/MACI, path: k8s/base)
+# 2. Destination: Where does it go? (Cluster: in-cluster, Namespace: maci)
+# 3. SyncPolicy: How should we sync? (Automated: self-heal and prune)
+#
+# If someone manually runs `kubectl delete pod` or `kubectl edit deployment`,
+# ArgoCD's "selfHeal" feature will instantly revert the change back to
+# what is defined in GitHub.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: maci-workloads
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/scusc/MACI.git'
+    path: k8s/base
+    targetRevision: main  # In prod, this might be 'main', or a release tag
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: maci
+  syncPolicy:
+    automated:
+      prune: true      # If you delete a file in git, ArgoCD deletes it in K8s
+      selfHeal: true   # If you manually edit K8s, ArgoCD reverts it
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,68 @@
+# ── Trip Service Deployment ───────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trip-service
+  namespace: maci
+  labels:
+    app: trip-service
+    app.kubernetes.io/part-of: maci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trip-service
+  template:
+    metadata:
+      labels:
+        app: trip-service
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: maci-workload-sa
+      containers:
+        - name: trip-service
+          image: acrmacidev123.azurecr.io/maci-trip-service:latest
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: maci-config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+# ── Trip Service — Kubernetes Service ─────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: trip-service
+  namespace: maci
+  labels:
+    app: trip-service
+    app.kubernetes.io/part-of: maci
+spec:
+  type: ClusterIP
+  selector:
+    app: trip-service
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP

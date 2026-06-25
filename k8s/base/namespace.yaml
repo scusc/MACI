@@ -1,0 +1,14 @@
+# ── Namespace ─────────────────────────────────────────────────────────
+# 🎓 LESSON: Namespaces
+# A namespace is a virtual cluster within your real cluster. It lets you
+# isolate resources. In production, you'd have:
+#   - "maci" namespace for your app
+#   - "monitoring" namespace for Prometheus/Grafana
+#   - "argocd" namespace for the CD tool
+# Resources in different namespaces can't see each other by default.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: maci
+  labels:
+    app.kubernetes.io/part-of: maci
