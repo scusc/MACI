@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 🎓 LESSON: Kustomize
+# ArgoCD has native support for Kustomize.
+# Instead of hardcoding "latest" in our Deployments, we can use Kustomize
+# to inject the exact Git SHA tag of the image that was just built.
+# This makes our deployments deterministic and roll-backable!
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - service-account.yaml
+  - auth-service.yaml
+  - trip-service.yaml
+
+images:
+  - name: acrmacidev123.azurecr.io/maci-auth-service
+    newTag: latest
+  - name: acrmacidev123.azurecr.io/maci-trip-service
+    newTag: latest
