@@ -28,6 +28,13 @@ resource "azurerm_postgresql_flexible_server" "main" {
   administrator_login    = "maciadmin"
   administrator_password = random_password.db_password.result
 
+  lifecycle {
+    ignore_changes = [
+      zone,
+      high_availability.0.standby_availability_zone,
+    ]
+  }
+
   # 🎓 LESSON: SKU Tiers
   # Burstable (B-series): Cheap, variable CPU. Great for dev/test.
   # General Purpose: Consistent CPU. For production.
