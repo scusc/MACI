@@ -1,0 +1,87 @@
+{
+  "search_metadata": {
+    "id": "mock_flights_sfo_bcn",
+    "status": "Success"
+  },
+  "best_flights": [
+    {
+      "price": 487,
+      "total_duration": 720,
+      "flights": [
+        {
+          "departure_airport": {"id": "SFO", "time": "2026-08-15 14:30"},
+          "arrival_airport": {"id": "BCN", "time": "2026-08-16 11:15"},
+          "duration": 720,
+          "airplane": "Boeing 787",
+          "airline": "United Airlines",
+          "flight_number": "UA1234",
+          "legroom": "31 in",
+          "overnight": true
+        }
+      ],
+      "layovers": [],
+      "carbon_emissions": {"this_flight": 450, "typical_for_this_route": 500, "difference_percent": -10},
+      "departure_token": "mock_dep_token_1",
+      "booking_token": "mock_book_token_1"
+    },
+    {
+      "price": 412,
+      "total_duration": 840,
+      "flights": [
+        {
+          "departure_airport": {"id": "SFO", "time": "2026-08-15 09:00"},
+          "arrival_airport": {"id": "JFK", "time": "2026-08-15 17:30"},
+          "duration": 330,
+          "airplane": "Airbus A321",
+          "airline": "Delta Air Lines",
+          "flight_number": "DL5678",
+          "legroom": "32 in"
+        },
+        {
+          "departure_airport": {"id": "JFK", "time": "2026-08-15 20:00"},
+          "arrival_airport": {"id": "BCN", "time": "2026-08-16 09:00"},
+          "duration": 480,
+          "airplane": "Boeing 767",
+          "airline": "Delta Air Lines",
+          "flight_number": "DL9012",
+          "legroom": "31 in",
+          "overnight": true
+        }
+      ],
+      "layovers": [{"duration": 150, "name": "John F. Kennedy International Airport", "id": "JFK"}],
+      "carbon_emissions": {"this_flight": 520, "typical_for_this_route": 500, "difference_percent": 4},
+      "departure_token": "mock_dep_token_2",
+      "booking_token": "mock_book_token_2"
+    },
+    {
+      "price": 395,
+      "total_duration": 960,
+      "flights": [
+        {
+          "departure_airport": {"id": "SFO", "time": "2026-08-15 06:15"},
+          "arrival_airport": {"id": "LAX", "time": "2026-08-15 07:45"},
+          "duration": 90,
+          "airplane": "Airbus A320",
+          "airline": "American Airlines",
+          "flight_number": "AA3456"
+        },
+        {
+          "departure_airport": {"id": "LAX", "time": "2026-08-15 11:00"},
+          "arrival_airport": {"id": "BCN", "time": "2026-08-15 22:15"},
+          "duration": 690,
+          "airplane": "Boeing 787",
+          "airline": "American Airlines",
+          "flight_number": "AA7890",
+          "overnight": false
+        }
+      ],
+      "layovers": [{"duration": 195, "name": "Los Angeles International Airport", "id": "LAX"}],
+      "carbon_emissions": {"this_flight": 540, "typical_for_this_route": 500, "difference_percent": 8}
+    }
+  ],
+  "price_insights": {
+    "lowest_price": 395,
+    "price_level": "low",
+    "typical_price_range": [420, 680]
+  }
+}

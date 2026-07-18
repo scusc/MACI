@@ -1,0 +1,10 @@
+{
+  "search_metadata": {"id": "mock_local_barcelona", "status": "Success"},
+  "local_results": [
+    {"title": "La Sagrada Familia", "rating": 4.8, "reviews": 245000, "type": "Basilica", "address": "C/ de Mallorca, 401, Barcelona", "thumbnail": "https://mock-sagrada.jpg"},
+    {"title": "Park Güell", "rating": 4.6, "reviews": 189000, "type": "Park", "address": "Carrer d'Olot, Barcelona", "thumbnail": "https://mock-guell.jpg"},
+    {"title": "La Boqueria Market", "rating": 4.5, "reviews": 87000, "type": "Market", "address": "La Rambla, 91, Barcelona", "thumbnail": "https://mock-boqueria.jpg"},
+    {"title": "Cal Pep", "rating": 4.4, "reviews": 6200, "type": "Tapas restaurant", "address": "Plaça de les Olles, 8, Barcelona", "website": "https://calpep.com"},
+    {"title": "Tickets Bar", "rating": 4.6, "reviews": 4100, "type": "Tapas restaurant", "address": "Avinguda del Paral·lel, 164, Barcelona", "website": "https://ticketsbar.es"}
+  ]
+}

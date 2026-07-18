@@ -1,0 +1,62 @@
+{
+  "search_metadata": {
+    "id": "mock_hotels_barcelona",
+    "status": "Success"
+  },
+  "properties": [
+    {
+      "name": "Hotel Arts Barcelona",
+      "overall_rating": 4.6,
+      "reviews": 8234,
+      "hotel_class": 5,
+      "description": "Upscale beachfront hotel with panoramic Mediterranean views",
+      "check_in_time": "3:00 PM",
+      "check_out_time": "12:00 PM",
+      "rate_per_night": {"lowest": "$189"},
+      "total_rate": {"lowest": "$945"},
+      "prices": [{"source": "Hotels.com", "link": "https://hotels.com/mock"}],
+      "amenities": ["Free Wi-Fi", "Pool", "Spa", "Restaurant", "Bar", "Gym", "Beach Access"],
+      "nearby_places": [
+        {"name": "Barceloneta Beach", "transportations": [{"duration": "3 min walk"}]},
+        {"name": "Port Olimpic", "transportations": [{"duration": "5 min walk"}]}
+      ],
+      "images": [{"thumbnail": "https://mock-hotel-arts.jpg"}]
+    },
+    {
+      "name": "Catalonia Plaza Catalunya",
+      "overall_rating": 4.3,
+      "reviews": 5621,
+      "hotel_class": 4,
+      "description": "Central hotel on Plaça de Catalunya with rooftop pool",
+      "check_in_time": "2:00 PM",
+      "check_out_time": "11:00 AM",
+      "rate_per_night": {"lowest": "$112"},
+      "total_rate": {"lowest": "$560"},
+      "prices": [{"source": "Booking.com", "link": "https://booking.com/mock"}],
+      "amenities": ["Free Wi-Fi", "Rooftop Pool", "Restaurant", "Bar", "Concierge"],
+      "nearby_places": [
+        {"name": "La Rambla", "transportations": [{"duration": "1 min walk"}]},
+        {"name": "Gothic Quarter", "transportations": [{"duration": "7 min walk"}]}
+      ],
+      "images": [{"thumbnail": "https://mock-catalonia.jpg"}]
+    },
+    {
+      "name": "Generator Barcelona",
+      "overall_rating": 4.1,
+      "reviews": 3410,
+      "hotel_class": 3,
+      "description": "Modern design hostel/hotel in Gràcia neighborhood",
+      "check_in_time": "2:00 PM",
+      "check_out_time": "10:00 AM",
+      "rate_per_night": {"lowest": "$68"},
+      "total_rate": {"lowest": "$340"},
+      "prices": [{"source": "Generator", "link": "https://generatorhostels.com/mock"}],
+      "amenities": ["Free Wi-Fi", "Bar", "Terrace", "Laundry", "Shared Kitchen"],
+      "nearby_places": [
+        {"name": "Parc Güell", "transportations": [{"duration": "15 min walk"}]},
+        {"name": "Gràcia Market", "transportations": [{"duration": "5 min walk"}]}
+      ],
+      "images": [{"thumbnail": "https://mock-generator.jpg"}]
+    }
+  ]
+}

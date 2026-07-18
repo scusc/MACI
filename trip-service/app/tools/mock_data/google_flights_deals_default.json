@@ -1,0 +1,9 @@
+{
+  "search_metadata": {"id": "mock_deals_sfo", "status": "Success"},
+  "departure_informations": {"airport_name": "San Francisco International", "airport_code": "SFO", "city": "San Francisco"},
+  "deals": [
+    {"name": "Barcelona", "country": "Spain", "price": 395, "average_price": 520, "discount_percentage": 24, "arrival_airport_code": "BCN", "start_date": "2026-08-15", "end_date": "2026-08-22", "airline": "United Airlines", "stops": 0, "flight_link": "https://google.com/flights/mock1"},
+    {"name": "Lisbon", "country": "Portugal", "price": 342, "average_price": 480, "discount_percentage": 29, "arrival_airport_code": "LIS", "start_date": "2026-08-18", "end_date": "2026-08-25", "airline": "TAP Portugal", "stops": 1, "flight_link": "https://google.com/flights/mock2"},
+    {"name": "Tokyo", "country": "Japan", "price": 589, "average_price": 850, "discount_percentage": 31, "arrival_airport_code": "NRT", "start_date": "2026-08-20", "end_date": "2026-08-30", "airline": "ANA", "stops": 0, "flight_link": "https://google.com/flights/mock3"}
+  ]
+}

@@ -1,83 +1,114 @@
 """
-AI Delegate Module (LangChain + Azure OpenAI)
+AI Delegate Module — LangChain integrations for MACI v2
 
-This module handles the actual LLM interaction. It takes a cluster of travelers,
-constructs a structured prompt containing their constraints, and uses LangChain
-to query Azure OpenAI (via APIM).
-
-The LLM is asked to generate flight parameters that satisfy all travelers in the cluster,
-balancing the Friction Exchange Rate (cost vs layover pain).
+This module provides the execution functions for the LLM agents 
+(Flight Delegate, Hotel Agent, Activity Agent) that are called by 
+the LangGraph orchestrator.
 """
 
-from typing import List, Dict, Any
-from langchain_openai import AzureChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from azure.identity import DefaultAzureCredential
 import os
+from pathlib import Path
+from typing import List, Dict, Any
 
-from app.services.orchestrator import Cluster
+from langchain_openai import AzureChatOpenAI
+from langchain_core.prompts import PromptTemplate
+from azure.identity import DefaultAzureCredential
 
-# In a real app, these come from environment variables injected by ConfigMap
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "https://apim-maci-dev.azure-api.net")
-AZURE_OPENAI_API_VERSION = "2024-05-13"
-AZURE_OPENAI_DEPLOYMENT_NAME = "gpt-4o"
+from maci_core.schemas.ai import DelegateResponse
+from app.tools.serp_client import SerpClient
+from app.tools.flight_search import create_flight_search_tool
+
+
+# Use Mock Mode for local dev by default to save SerpAPI credits
+MOCK_MODE = os.getenv("MACI_MOCK_MODE", "true").lower() == "true"
+
 
 def get_azure_openai_client() -> AzureChatOpenAI:
     """
     Creates an AzureChatOpenAI client using Entra ID authentication.
-    No API keys are used! It gets a token from the AKS Workload Identity
-    and passes it to APIM/OpenAI.
+    No API keys are used for the LLM.
     """
-    # 1. Get an Entra ID token using the AKS managed identity
-    credential = DefaultAzureCredential()
-    token = credential.get_token("https://cognitiveservices.azure.com/.default")
+    endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+    api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+    
+    if not endpoint:
+        raise ValueError("AZURE_OPENAI_ENDPOINT environment variable must be set.")
+        
+    kwargs = {
+        "azure_endpoint": endpoint,
+        "openai_api_version": "2024-12-01-preview",
+        "azure_deployment": "o3",
+        "temperature": 1,
+        "max_retries": 10,
+        "max_tokens": 4000,
+    }
+    
+    if api_key:
+        kwargs["api_key"] = api_key
+    else:
+        # Use Entra ID (Workload Identity / Managed Identity)
+        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+        credential = DefaultAzureCredential()
+        token_provider = get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default")
+        kwargs["azure_ad_token_provider"] = token_provider
 
-    # 2. Initialize LangChain with the token
-    return AzureChatOpenAI(
-        azure_endpoint=AZURE_OPENAI_ENDPOINT,
-        openai_api_version=AZURE_OPENAI_API_VERSION,
-        azure_deployment=AZURE_OPENAI_DEPLOYMENT_NAME,
-        api_key=token.token,  # We pass the Entra ID JWT as the "api_key"
-        temperature=0.2, # Low temperature for deterministic reasoning
-    )
+    return AzureChatOpenAI(**kwargs)
 
-async def negotiate_cluster_itinerary(cluster: Cluster) -> Dict[str, Any]:
+
+from langgraph.prebuilt import create_react_agent
+
+async def run_flight_delegate(
+    origin: str, 
+    destination: str, 
+    date: str, 
+    travelers: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
     """
-    Takes a single cluster of travelers and asks the LLM to negotiate the best flight window.
+    Runs the LLM agent for a single origin airport.
+    Uses a React Agent to search flights, then structures the output.
     """
+    import logging
+    logger = logging.getLogger("maci.delegate")
+    logger.info("Starting Flight Delegate for origin: %s", origin)
+    
     llm = get_azure_openai_client()
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """
-        You are an autonomous AI delegate representing a cluster of enterprise travelers 
-        all departing from {origin_airport}.
-        
-        Your job is to evaluate their constraints and propose a single flight departure window 
-        that minimizes the 'Friction Exchange Rate' (total cost + layover pain) while ensuring 
-        all travelers arrive at the destination within the global convergence window.
-        
-        Output your proposal as a JSON object containing:
-        - proposed_departure_window_start (ISO8601)
-        - proposed_departure_window_end (ISO8601)
-        - max_acceptable_price_usd (int)
-        - accepted_layover_penalty_hours (int)
-        - reasoning (brief explanation)
-        """),
-        ("user", "Here are the constraints for the travelers in this cluster:\n\n{constraints}")
+    serp_client = SerpClient(mock_mode=MOCK_MODE)
+    flight_tool = create_flight_search_tool(serp_client)
+    
+    # Load the Jinja2 prompt template
+    prompt_path = Path(__file__).parent.parent / "prompts" / "flight_delegate.md"
+    prompt_template = PromptTemplate.from_file(
+        str(prompt_path), 
+        template_format="jinja2"
+    )
+    
+    system_prompt = prompt_template.invoke({
+        "origin_airport": origin,
+        "destination": destination,
+        "outbound_date": date,
+        "travelers": travelers
+    }).to_string()
+    
+    # 1. Create a React Agent that can loop and call the flight search tool
+    agent_executor = create_react_agent(llm, tools=[flight_tool])
+    
+    # 2. Run the agent to do the research
+    inputs = {"messages": [
+        ("system", system_prompt),
+        ("user", f"Please search for flights from {origin} to {destination} on {date} and pick the top 3 options based on my constraints.")
+    ]}
+    
+    logger.info("Executing tool-calling loop for %s...", origin)
+    result = await agent_executor.ainvoke(inputs)
+    final_message = result["messages"][-1].content
+    
+    # 3. Force the final output into our strict Pydantic schema
+    logger.info("Formatting output for %s into strict schema...", origin)
+    extractor = llm.with_structured_output(DelegateResponse)
+    
+    structured = await extractor.ainvoke([
+        ("system", "Extract the flight proposals from the following text into the structured schema. Origin is " + origin),
+        ("user", final_message)
     ])
-
-    # Format the traveler constraints into a readable string
-    constraints_str = ""
-    for t in cluster.travelers:
-        constraints_str += f"Traveler {t.traveler_id}: Earliest Departure: {t.earliest_departure}, Latest Arrival: {t.latest_arrival}\n"
-
-    chain = prompt | llm
-
-    # Execute the LLM call
-    response = await chain.ainvoke({
-        "origin_airport": cluster.origin_airport,
-        "constraints": constraints_str
-    })
-
-    # In production, we would use LangChain's StructuredOutputParser to validate the JSON.
-    return {"raw_response": response.content}
+    
+    return structured.proposals

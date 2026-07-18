@@ -1,0 +1,8 @@
+{
+  "search_metadata": {"id": "mock_events_barcelona", "status": "Success"},
+  "events_results": [
+    {"title": "Primavera Sound 2026", "date": {"start_date": "2026-08-14"}, "venue": {"name": "Parc del Fòrum"}, "address": ["Barcelona, Spain"], "description": "Annual music festival featuring international artists", "link": "https://primaverasound.com"},
+    {"title": "FC Barcelona vs Real Madrid", "date": {"start_date": "2026-08-17"}, "venue": {"name": "Spotify Camp Nou"}, "address": ["C. d'Aristides Maillol, Barcelona"], "description": "La Liga matchday", "link": "https://fcbarcelona.com"},
+    {"title": "Barcelona Open Banc Sabadell", "date": {"start_date": "2026-08-16"}, "venue": {"name": "Real Club de Tenis Barcelona"}, "address": ["Barcelona, Spain"], "description": "ATP 500 tennis tournament"}
+  ]
+}
