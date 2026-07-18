@@ -8,14 +8,16 @@ kind: Kustomization
 # This makes our deployments deterministic and roll-backable!
 
 resources:
-  - namespace.yaml
-  - configmap.yaml
-  - service-account.yaml
-  - auth-service.yaml
-  - trip-service.yaml
+- namespace.yaml
+- configmap.yaml
+- service-account.yaml
+- auth-service.yaml
+- trip-service.yaml
 
 images:
-  - name: acrmacidev123.azurecr.io/maci-auth-service
-    newTag: latest
-  - name: acrmacidev123.azurecr.io/maci-trip-service
-    newTag: latest
+- name: acrmacidev123.azurecr.io/maci-auth-service
+  newName: acrmacidev123.azurecr.io/maci-auth-service
+  newTag: b17f41461c38b37ff143d089e2d5b8771d846db7
+- name: acrmacidev123.azurecr.io/maci-trip-service
+  newName: acrmacidev123.azurecr.io/maci-trip-service
+  newTag: b17f41461c38b37ff143d089e2d5b8771d846db7
