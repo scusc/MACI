@@ -56,6 +56,11 @@ class HotelProposal(BaseModel):
     booking_link: Optional[str]
     images: List[str]
 
+class HotelSubgroup(BaseModel):
+    """Represents a hotel allocation for a specific subgroup of travelers."""
+    target_travelers: str = Field(description="e.g., 'Budget Travelers', 'Yuki and Emma', or 'Entire Group'")
+    hotel: HotelProposal
+
 class ActivityItem(BaseModel):
     name: str
     type: str = Field(description="e.g., 'Restaurant', 'Museum', 'Event'")
@@ -73,6 +78,6 @@ class GroupItinerary(BaseModel):
     outbound_date: str
     return_date: Optional[str]
     convergence: ConvergedItinerary
-    hotels: List[HotelProposal]
+    hotel_allocations: List[HotelSubgroup]
     activities: List[ActivityItem]
     price_intelligence: str = Field(description="Summary of price trends and booking advice")

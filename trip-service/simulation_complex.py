@@ -26,6 +26,7 @@ from jinja2 import Template
 
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from langgraph.prebuilt import create_react_agent
 
 from app.tools.serp_client import SerpClient
 from app.tools.flight_search import create_flight_search_tool
@@ -33,7 +34,8 @@ from app.tools.hotel_search import create_hotel_search_tool
 from app.tools.local_search import create_local_search_tool, create_event_search_tool
 from app.tools.price_intel import create_price_insights_tool, create_flight_deals_tool
 from app.services.convergence import run_convergence_algorithm
-from maci_core.schemas.ai import FlightProposal
+from maci_core.schemas.ai import FlightProposal, HotelSubgroup
+
 
 # ── 0. Trace Infrastructure ───────────────────────────────────────────────
 
@@ -152,6 +154,9 @@ def get_llm():
 class BaseProposals(BaseModel):
     proposals: List[FlightProposal]
 
+class BaseHotelAllocations(BaseModel):
+    allocations: List[HotelSubgroup]
+
 async def run_flight_delegate(origin: str, destination: str, date: str, travelers: List[Dict[str, Any]]) -> List[FlightProposal]:
     agent_id = f"flight-delegate-{origin.lower()}-{str(uuid.uuid4())[:6]}"
     trace("AGENT_LIFECYCLE", agent_id, f"Agent CREATED for origin={origin}")
@@ -165,29 +170,14 @@ async def run_flight_delegate(origin: str, destination: str, date: str, traveler
     flight_tool = create_flight_search_tool(serp_client)
     
     messages = [
-        SystemMessage(content=system_prompt),
         HumanMessage(content=f"Please search for flights from {origin} to {destination} on {date} and pick the top 3 options based on my constraints.")
     ]
     
-    llm_with_tools = llm.bind_tools([flight_tool])
-    trace("MESSAGE_CHAIN", agent_id, "Message #0: SystemMessage")
-    trace("MESSAGE_CHAIN", agent_id, "Message #1: HumanMessage")
+    agent_executor = create_react_agent(llm, tools=[flight_tool], prompt=system_prompt)
+    trace("MESSAGE_CHAIN", agent_id, "Invoking create_react_agent")
     
-    for i in range(2):
-        response = llm_with_tools.invoke(messages)
-        messages.append(response)
-        trace("MESSAGE_CHAIN", agent_id, f"Message #{len(messages)-1}: AIMessage")
-        
-        if not response.tool_calls:
-            break
-            
-        for tool_call in response.tool_calls:
-            if tool_call["name"] == "search_flights":
-                tool_output = flight_tool.invoke(tool_call["args"])
-                messages.append(ToolMessage(content=tool_output, tool_call_id=tool_call["id"]))
-                trace("MESSAGE_CHAIN", agent_id, f"Message #{len(messages)-1}: ToolMessage")
-    
-    final_output = messages[-1].content
+    response = await agent_executor.ainvoke({"messages": messages})
+    final_output = response["messages"][-1].content
     trace("AGENT_OUTPUT", agent_id, "Raw agent output", data={"final_message": final_output})
     
     structured_llm = llm.with_structured_output(BaseProposals)
@@ -252,23 +242,29 @@ async def run_hotel_agent(destination: str, dates: str, group_profile: dict) -> 
     hotel_tool = create_hotel_search_tool(serp_client)
     
     messages = [
-        SystemMessage(content=system_prompt),
         HumanMessage(content="Please search for hotels based on our profile.")
     ]
     
-    llm_with_tools = llm.bind_tools([hotel_tool])
-    for i in range(2):
-        response = llm_with_tools.invoke(messages)
-        messages.append(response)
-        if not response.tool_calls:
-            break
-        for tool_call in response.tool_calls:
-            if tool_call["name"] == "search_hotels":
-                tool_output = hotel_tool.invoke(tool_call["args"])
-                messages.append(ToolMessage(content=tool_output, tool_call_id=tool_call["id"]))
+    agent_executor = create_react_agent(llm, tools=[hotel_tool], prompt=system_prompt)
+    response = await agent_executor.ainvoke({"messages": messages})
+    final_output = response["messages"][-1].content
                 
-    trace("AGENT_OUTPUT", agent_id, "Hotel Agent Output", data={"final_message": messages[-1].content})
-    return messages[-1].content
+    trace("AGENT_OUTPUT", agent_id, "Hotel Agent Text Output", data={"final_message": final_output})
+    
+    structured_llm = llm.with_structured_output(BaseHotelAllocations)
+    extraction_prompt = f"Extract the hotel allocations (subgroups and hotel details) from the following text into the structured format:\n\n{final_output}"
+    trace("SCHEMA_EXTRACTION", agent_id, "Extracting structured HotelAllocations")
+    
+    try:
+        parsed_result = structured_llm.invoke(extraction_prompt)
+        allocations = parsed_result.allocations if parsed_result else []
+    except Exception as e:
+        trace("SCHEMA_EXTRACTION", agent_id, f"❌ Extraction failed: {e}")
+        allocations = []
+        
+    trace("AGENT_LIFECYCLE", agent_id, f"Agent COMPLETED with {len(allocations)} hotel allocations")
+    
+    return allocations
 
 async def run_activity_agent(destination: str, dates: str, group_profile: dict) -> str:
     agent_id = f"activity-agent-{str(uuid.uuid4())[:6]}"
@@ -291,23 +287,15 @@ async def run_activity_agent(destination: str, dates: str, group_profile: dict) 
     events_tool = create_event_search_tool(serp_client)
     
     messages = [
-        SystemMessage(content=system_prompt),
         HumanMessage(content="Please build our activity itinerary.")
     ]
     
-    llm_with_tools = llm.bind_tools([places_tool, events_tool])
-    for i in range(3):
-        response = llm_with_tools.invoke(messages)
-        messages.append(response)
-        if not response.tool_calls:
-            break
-        for tool_call in response.tool_calls:
-            tool_fn = places_tool if tool_call["name"] == "search_places" else events_tool
-            tool_output = tool_fn.invoke(tool_call["args"])
-            messages.append(ToolMessage(content=tool_output, tool_call_id=tool_call["id"]))
+    agent_executor = create_react_agent(llm, tools=[places_tool, events_tool], prompt=system_prompt)
+    response = await agent_executor.ainvoke({"messages": messages})
+    final_output = response["messages"][-1].content
             
-    trace("AGENT_OUTPUT", agent_id, "Activity Agent Output", data={"final_message": messages[-1].content})
-    return messages[-1].content
+    trace("AGENT_OUTPUT", agent_id, "Activity Agent Output", data={"final_message": final_output})
+    return final_output
 
 async def run_price_intel_agent(destination: str, dates: str, origins: List[str]) -> str:
     agent_id = f"price-intel-agent-{str(uuid.uuid4())[:6]}"
@@ -327,23 +315,15 @@ async def run_price_intel_agent(destination: str, dates: str, origins: List[str]
     deals_tool = create_flight_deals_tool(serp_client)
     
     messages = [
-        SystemMessage(content=system_prompt),
         HumanMessage(content="Provide your pricing recommendation.")
     ]
     
-    llm_with_tools = llm.bind_tools([insights_tool, deals_tool])
-    for i in range(3):
-        response = llm_with_tools.invoke(messages)
-        messages.append(response)
-        if not response.tool_calls:
-            break
-        for tool_call in response.tool_calls:
-            tool_fn = insights_tool if tool_call["name"] == "get_price_insights" else deals_tool
-            tool_output = tool_fn.invoke(tool_call["args"])
-            messages.append(ToolMessage(content=tool_output, tool_call_id=tool_call["id"]))
+    agent_executor = create_react_agent(llm, tools=[insights_tool, deals_tool], prompt=system_prompt)
+    response = await agent_executor.ainvoke({"messages": messages})
+    final_output = response["messages"][-1].content
             
-    trace("AGENT_OUTPUT", agent_id, "Price Intel Agent Output", data={"final_message": messages[-1].content})
-    return messages[-1].content
+    trace("AGENT_OUTPUT", agent_id, "Price Intel Agent Output", data={"final_message": final_output})
+    return final_output
 
 
 # ── MAIN SIMULATION ──────────────────────────────────────────────────────
@@ -366,67 +346,82 @@ async def main():
     }
     origins = ["BOM", "ORD", "SFO", "JFK"]
     
-    trace("SCENARIO", "simulation", "Turn 1: Initial Search")
+    from app.services.orchestrator import intake_node
     
+    turn = 1
+    max_turns = 5
+    convergence_result = None
     all_proposals = {}
-    for origin in origins:
-        travelers_in_cluster = [t for t in scenario["travelers"] if t["origin_airport"] == origin]
-        proposals = await run_flight_delegate(origin, scenario["destination"], scenario["outbound_date"], travelers_in_cluster)
-        all_proposals[origin] = proposals
-        
-    proposals_by_origin = [{"origin": o, "proposals": all_proposals[o]} for o in origins]
-    convergence_result = run_convergence_algorithm(proposals_by_origin)
-    trace("CONVERGENCE", "orchestrator", "Convergence Result Turn 1", data={"success": convergence_result.is_successful, "reason": convergence_result.failure_reason})
     
-    if not convergence_result.is_successful:
-        trace("SCENARIO", "simulation", "Turn 2: Negotiation (Budget Adjustment)")
+    while turn <= max_turns:
+        trace("SCENARIO", "simulation", f"Turn {turn}: Convergence Loop")
+        
+        # 1. Intake Check (Fast Fail)
+        state = {
+            "destination": scenario["destination"],
+            "outbound_date": scenario["outbound_date"],
+            "return_date": None,
+            "travelers": scenario["travelers"],
+            "flight_proposals": []
+        }
+        
+        state = await intake_node(state)
+        
+        if state.get("converged_itinerary") and not state["converged_itinerary"].is_successful:
+            convergence_result = state["converged_itinerary"]
+        else:
+            # 2. Flight Delegates
+            # Only re-run if we haven't or if constraints changed. For this sim, re-run missing or all if easier.
+            # To save time, only re-run those missing from all_proposals or that we specifically want to retry.
+            # Let's just clear and re-run all to fully simulate the agent mapping step cleanly.
+            all_proposals = {}
+            for origin in origins:
+                travelers_in_cluster = [t for t in scenario["travelers"] if t["origin_airport"] == origin]
+                proposals = await run_flight_delegate(origin, scenario["destination"], scenario["outbound_date"], travelers_in_cluster)
+                all_proposals[origin] = proposals
+                
+            proposals_by_origin = [{"origin": o, "proposals": all_proposals[o]} for o in origins]
+            convergence_result = run_convergence_algorithm(proposals_by_origin)
+            
+        trace("CONVERGENCE", "orchestrator", f"Convergence Result Turn {turn}", data={"success": convergence_result.is_successful, "reason": convergence_result.failure_reason})
+        
+        if convergence_result.is_successful:
+            break
+            
+        # 3. Negotiation
+        trace("SCENARIO", "simulation", f"Turn {turn}: Negotiation")
         negotiation_proposal = await run_negotiation_agent(convergence_result.failure_reason, scenario)
         
-        # Simulate User Response: Priya increases budget to $850
-        trace("SCENARIO", "user", "User accepts budget increase for BOM")
-        for t in scenario["travelers"]:
-            if t["traveler_id"] == "T1_Priya":
-                t["budget_flights_usd"] = 850
-                
-        # Re-run BOM
-        travelers_in_cluster = [t for t in scenario["travelers"] if t["origin_airport"] == "BOM"]
-        proposals = await run_flight_delegate("BOM", scenario["destination"], scenario["outbound_date"], travelers_in_cluster)
-        all_proposals["BOM"] = proposals
-        
-        proposals_by_origin = [{"origin": o, "proposals": all_proposals[o]} for o in origins]
-        convergence_result = run_convergence_algorithm(proposals_by_origin)
-        trace("CONVERGENCE", "orchestrator", "Convergence Result Turn 2", data={"success": convergence_result.is_successful, "reason": convergence_result.failure_reason})
-        
-        if not convergence_result.is_successful:
-            trace("SCENARIO", "simulation", "Turn 3: Negotiation (Timing Adjustment)")
-            negotiation_proposal = await run_negotiation_agent(convergence_result.failure_reason, scenario)
-            
-            # Simulate User Response: Marcus agrees to fly at 8am
+        # 4. Simulate User Response based on the reason
+        if "JFK" in convergence_result.failure_reason or "Fast Fail" in convergence_result.failure_reason:
+            trace("SCENARIO", "user", "User increases Emma's budget (JFK) to $600")
+            for t in scenario["travelers"]:
+                if t["traveler_id"] == "T6_Emma":
+                    t["budget_flights_usd"] = 600
+        elif "BOM" in convergence_result.failure_reason:
+            trace("SCENARIO", "user", "User accepts budget increase for BOM to $850")
+            for t in scenario["travelers"]:
+                if t["traveler_id"] == "T1_Priya":
+                    t["budget_flights_usd"] = 850
+        else:
             trace("SCENARIO", "user", "User accepts earlier departure for ORD")
             for t in scenario["travelers"]:
                 if t["traveler_id"] == "T2_Marcus":
                     t["earliest_departure"] = f"{test_date} 08:00"
                     
-            # Re-run ORD
-            travelers_in_cluster = [t for t in scenario["travelers"] if t["origin_airport"] == "ORD"]
-            proposals = await run_flight_delegate("ORD", scenario["destination"], scenario["outbound_date"], travelers_in_cluster)
-            all_proposals["ORD"] = proposals
-            
-            proposals_by_origin = [{"origin": o, "proposals": all_proposals[o]} for o in origins]
-            convergence_result = run_convergence_algorithm(proposals_by_origin)
-            trace("CONVERGENCE", "orchestrator", "Convergence Result Turn 3", data={"success": convergence_result.is_successful, "reason": convergence_result.failure_reason})
+        turn += 1
     
-    trace("SCENARIO", "simulation", "Turn 4: Hotel Search")
+    trace("SCENARIO", "simulation", f"Turn {turn}: Hotel Search")
     hotel_profile = {
         "total_travelers": 6,
         "rooms_needed": 3,
-        "total_budget_usd": 470, # (80+60+120+50+70+90)
+        "total_budget_usd": 470,
         "budget_per_night_usd": 78,
         "special_requests": "Split into boutique luxury (for Yuki/Emma) and budget/free-breakfast (for Aisha/Marcus). Also need wheelchair accessibility."
     }
     hotel_result = await run_hotel_agent(scenario["destination"], scenario["outbound_date"] + " to " + (datetime.now() + timedelta(days=64)).strftime("%Y-%m-%d"), hotel_profile)
     
-    trace("SCENARIO", "simulation", "Turn 5: Activity Search")
+    trace("SCENARIO", "simulation", f"Turn {turn+1}: Activity Search")
     activity_profile = {
         "total_travelers": 6,
         "dietary_restrictions": "Vegetarian",
@@ -435,7 +430,7 @@ async def main():
     }
     activity_result = await run_activity_agent(scenario["destination"], scenario["outbound_date"], activity_profile)
     
-    trace("SCENARIO", "simulation", "Turn 6: Price Intelligence")
+    trace("SCENARIO", "simulation", f"Turn {turn+2}: Price Intelligence")
     price_result = await run_price_intel_agent(scenario["destination"], scenario["outbound_date"], origins)
     
     trace("REPORT", "simulation", "Simulation Complete!")

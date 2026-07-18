@@ -57,7 +57,59 @@ class FlightDelegateState(TypedDict):
 # ── 2. Nodes ─────────────────────────────────────────────────────────────────
 
 async def intake_node(state: TripState) -> TripState:
-    """Validates input and prepares for fan-out."""
+    """Validates input and prepares for fan-out. Implements Fast Fail for impossible budgets."""
+    import os
+    import logging
+    from app.tools.serp_client import SerpClient
+    from maci_core.schemas.ai import ConvergedItinerary
+
+    logger = logging.getLogger("maci.orchestrator.intake")
+    serp_client = SerpClient(api_key=os.environ["SERPAPI_API_KEY"])
+    
+    # We map common destinations to IATA for the fast fail check
+    # In a real system, this would be an LLM call or geocoding API
+    dest_map = {"Barcelona, Spain": "BCN"}
+    arrival_id = dest_map.get(state["destination"], "BCN")
+    
+    failed_origins = []
+    for t in state["travelers"]:
+        origin = t["origin_airport"]
+        budget = t["budget_flights_usd"]
+        
+        try:
+            params = {
+                "departure_id": origin,
+                "arrival_id": arrival_id,
+                "outbound_date": state["outbound_date"],
+                "type": 1 if state.get("return_date") else 2,
+                "currency": "USD",
+                "hl": "en",
+                "gl": "us",
+            }
+            raw = serp_client.search("google_flights", params)
+            insights = raw.get("price_insights", {})
+            lowest = insights.get("lowest_price")
+            
+            if lowest is not None:
+                threshold = lowest * 0.8
+                logger.info(f"Fast Fail Check for {origin}: Budget ${budget} vs Lowest ${lowest} (Threshold ${threshold:.2f})")
+                if budget < threshold:
+                    logger.warning(f"Fast Fail: {origin} budget of ${budget} is impossible (historical low is ${lowest}).")
+                    failed_origins.append(origin)
+        except Exception as e:
+            logger.warning(f"Failed to check price insights for {origin}: {e}")
+            
+    if failed_origins:
+        # Pre-populate a failed convergence state
+        state["converged_itinerary"] = ConvergedItinerary(
+            is_successful=False,
+            convergence_window_start=None,
+            convergence_window_end=None,
+            total_group_flight_cost=0,
+            selected_flights=[],
+            failure_reason=f"Fast Fail: The following origins have budgets far below historical minimums: {', '.join(failed_origins)}."
+        )
+        
     return state
 
 
@@ -66,6 +118,14 @@ def spawn_flight_delegates(state: TripState) -> List[Send]:
     Map step: Group travelers by origin airport and spawn a FlightDelegate
     for each unique origin.
     """
+    if state.get("converged_itinerary") and not state["converged_itinerary"].is_successful:
+        # Fast fail triggered. We skip flight search and go straight to convergence
+        # But wait, convergence node requires `flight_proposals`. We can just bypass delegates.
+        # Returning [] means the parallel map step is skipped. But to trigger convergence,
+        # we still want convergence to run, or we bypass it.
+        # Actually, if we return [] from a Send, LangGraph proceeds to the next node after the Send layer.
+        return []
+
     origins = {}
     for t in state["travelers"]:
         orig = t["origin_airport"]
@@ -112,7 +172,11 @@ async def convergence_node(state: TripState) -> Dict[str, Any]:
     """
     from app.services.convergence import run_convergence_algorithm
     
-    proposals_by_origin = state["flight_proposals"]
+    if state.get("converged_itinerary") and not state["converged_itinerary"].is_successful:
+        # Fast fail happened in intake. We just preserve it.
+        return {}
+        
+    proposals_by_origin = state.get("flight_proposals", [])
     converged = run_convergence_algorithm(proposals_by_origin)
     
     return {"converged_itinerary": converged}

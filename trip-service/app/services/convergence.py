@@ -51,13 +51,18 @@ def run_convergence_algorithm(proposals_by_origin: List[Dict[str, Any]]) -> Conv
     lists_of_proposals = [item.get("proposals", []) for item in proposals_by_origin]
     
     if not lists_of_proposals or not all(lists_of_proposals):
+        failed_origins = [
+            item.get("origin", "Unknown") 
+            for item in proposals_by_origin 
+            if not item.get("proposals")
+        ]
         return ConvergedItinerary(
             is_successful=False,
             convergence_window_start=None,
             convergence_window_end=None,
             total_group_flight_cost=0,
             selected_flights=[],
-            failure_reason="One or more origins returned no valid flight proposals."
+            failure_reason=f"The following origins returned no valid flight proposals: {', '.join(failed_origins)}. Their constraints (budget/timing) are likely too strict."
         )
 
     all_combinations = list(itertools.product(*lists_of_proposals))
