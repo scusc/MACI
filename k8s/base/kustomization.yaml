@@ -17,7 +17,7 @@ resources:
 images:
 - name: acrmacidev123.azurecr.io/maci-auth-service
   newName: acrmacidev123.azurecr.io/maci-auth-service
-  newTag: 84042dde12782eadaaac30c328854772b5969d5d
+  newTag: 614c313672dbea35aff32d44b66c22d4cd761a23
 - name: acrmacidev123.azurecr.io/maci-trip-service
   newName: acrmacidev123.azurecr.io/maci-trip-service
-  newTag: 84042dde12782eadaaac30c328854772b5969d5d
+  newTag: 614c313672dbea35aff32d44b66c22d4cd761a23
