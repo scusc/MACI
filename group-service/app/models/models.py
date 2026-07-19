@@ -22,6 +22,7 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=True) # Nullable for lazy users created by invites
     display_name = Column(String(100))
     phone = Column(String(20))
     country_code = Column(String(2), default="US")

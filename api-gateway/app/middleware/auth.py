@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
+from maci_core.core.security import verify_token
 
 logger = logging.getLogger("rally.gateway.auth")
 
@@ -17,20 +18,21 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if request.url.path.startswith("/health") or "/webhooks/" in request.url.path:
             return await call_next(request)
 
-        # In a real implementation, we would validate JWT here:
-        # auth_header = request.headers.get("Authorization")
-        # if not auth_header or not auth_header.startswith("Bearer "):
-        #     return JSONResponse(status_code=401, content={"detail": "Missing or invalid token"})
-        # 
-        # try:
-        #     token = auth_header.split(" ")[1]
-        #     payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        #     request.state.user = payload
-        # except Exception as e:
-        #     return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+        # Pass-through for auth routes
+        if "/api/v1/auth/" in request.url.path:
+            return await call_next(request)
+
+        # Validate JWT
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JSONResponse(status_code=401, content={"detail": "Missing or invalid token"})
         
-        # For this prototype, we'll just pass through
-        request.state.user = {"email": "demo@rally.app"}
+        try:
+            token = auth_header.split(" ")[1]
+            payload = verify_token(token, expected_type="access")
+            request.state.user = payload
+        except Exception as e:
+            return JSONResponse(status_code=401, content={"detail": f"Invalid token: {str(e)}"})
         
         response = await call_next(request)
         return response

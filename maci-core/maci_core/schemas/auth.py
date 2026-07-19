@@ -50,3 +50,29 @@ class AuthResponse(BaseModel):
     """Full auth response with tokens and org details."""
     tokens: TokenResponse
     organization: OrgResponse
+
+
+# ── Rally Auth Schemas ────────────────────────────────────────────────
+
+class RallyRegisterRequest(BaseModel):
+    """Register a new user (Organizer or standard user) in Rally."""
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    display_name: str | None = None
+    phone: str | None = None
+
+
+class RallyUserResponse(BaseModel):
+    """User details returned in Rally auth."""
+    id: uuid.UUID
+    email: str
+    display_name: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RallyAuthResponse(BaseModel):
+    """Full auth response with tokens and user details for Rally."""
+    tokens: TokenResponse
+    user: RallyUserResponse

@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes.trips import router as trips_router
 from app.routes.organizer import router as organizer_router
+from app.routes.auth import router as auth_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,6 +47,7 @@ app.add_middleware(
 )
 
 # Include Routers
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(trips_router)
 app.include_router(organizer_router, prefix="/api/v1")
 
