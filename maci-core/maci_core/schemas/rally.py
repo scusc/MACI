@@ -10,7 +10,7 @@ These models define the API contracts for Rally's core services:
 import uuid
 from datetime import date, datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from pydantic import BaseModel, Field
 
@@ -311,3 +311,25 @@ class OrganizerDashboardStats(BaseModel):
     total_platform_fees_paid: int     # cents
     average_conversion_rate: float    # percentage (0-100)
     upcoming_payouts: int             # cents (escrow held that will release soon)
+
+
+# ── AI Planning Schemas ────────────────────────────────────────────────────────
+
+class TravelerRequest(BaseModel):
+    """Traveler constraint for AI planning."""
+    origin_airport: str = Field(..., min_length=3, max_length=3)
+    budget_flights_usd: int = Field(..., gt=0)
+
+
+class TripPlanRequest(BaseModel):
+    """Input parameters to generate a full trip plan via AI."""
+    destination: str
+    start_date: date
+    end_date: date
+    travelers: List[TravelerRequest]
+
+
+class TripPlanResponse(BaseModel):
+    """The generated trip proposal combining AI itinerary with Rally setup payload."""
+    rally_trip_payload: TripCreate
+    ai_itinerary: Any  # Will hold GroupItinerary from maci_core.schemas.ai
