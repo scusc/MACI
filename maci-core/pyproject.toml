@@ -27,6 +27,8 @@ dependencies = [
     "jinja2>=3.1.0",
     "opentelemetry-api>=1.20.0",
     "opentelemetry-sdk>=1.20.0",
+    "azure-servicebus>=7.11.4",
+    "stripe>=8.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -13,6 +13,8 @@ from app.routes.trips import router as trips_router
 from app.routes.organizer import router as organizer_router
 from app.routes.auth import router as auth_router
 from maci_core.database import engine, Base
+from maci_core.events.bus import bus_manager
+from maci_core.events.schemas import PaymentIntentAuthorizedEvent
 import app.models.models  # Import all models so metadata binds them
 
 logging.basicConfig(
@@ -21,6 +23,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger("rally.group")
 
+
+async def handle_payment_authorized(event_data: dict):
+    from app.routes.trips import mark_member_paid
+    from maci_core.database import async_session_factory
+    import uuid
+    
+    try:
+        event = PaymentIntentAuthorizedEvent(**event_data)
+        logger.info(f"Received payment.authorized event for member {event.member_id}")
+        
+        async with async_session_factory() as db:
+            await mark_member_paid(
+                trip_id=uuid.UUID(event.trip_id),
+                member_id=uuid.UUID(event.member_id),
+                db=db
+            )
+    except Exception as e:
+        logger.error(f"Error handling payment.authorized: {e}")
+
+async def start_service_bus_listeners():
+    logger.info("Starting Service Bus listener for PaymentIntentAuthorizedEvent")
+    await bus_manager.listen_to_subscription(
+        topic_name="payment.authorized",
+        subscription_name="group_service_sub",
+        message_handler=handle_payment_authorized
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,9 +59,11 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         
+    import asyncio
+    sb_task = asyncio.create_task(start_service_bus_listeners())
     yield
     logger.info("Shutting down Rally Group Service...")
-    # Add any shutdown tasks here
+    sb_task.cancel()
 
 
 app = FastAPI(

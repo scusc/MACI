@@ -13,32 +13,9 @@ from maci_core.schemas.rally import PaymentResponse, PaymentStatus, PaymentType,
 
 logger = logging.getLogger("rally.payment.stripe")
 
-# Mock Stripe SDK (replace with actual stripe-python in prod)
-class MockStripe:
-    @staticmethod
-    def PaymentIntent_create(**kwargs) -> Dict[str, Any]:
-        return {
-            "id": f"pi_{uuid.uuid4().hex[:14]}",
-            "client_secret": f"pi_{uuid.uuid4().hex[:14]}_secret_{uuid.uuid4().hex[:14]}",
-            "status": "requires_payment_method",
-            "amount": kwargs.get("amount"),
-            "currency": kwargs.get("currency"),
-            "capture_method": kwargs.get("capture_method"),
-        }
-    
-    @staticmethod
-    def PaymentIntent_capture(intent_id: str) -> Dict[str, Any]:
-        return {
-            "id": intent_id,
-            "status": "succeeded",
-        }
-    
-    @staticmethod
-    def PaymentIntent_cancel(intent_id: str) -> Dict[str, Any]:
-        return {
-            "id": intent_id,
-            "status": "canceled",
-        }
+import stripe
+
+stripe.api_key = settings.stripe_api_key
 
 
 async def create_payment_intent(
@@ -58,16 +35,23 @@ async def create_payment_intent(
     
     total_amount = amount + platform_fee
 
-    intent = MockStripe.PaymentIntent_create(
-        amount=total_amount,
-        currency=currency.lower(),
-        capture_method="manual",  # IMPORTANT: This creates the Escrow behavior
-        metadata={
-            "trip_id": str(trip_id),
-            "member_id": str(member_id),
-            "platform_fee": str(platform_fee)
-        }
-    )
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=total_amount,
+            currency=currency.lower(),
+            capture_method="manual",  # IMPORTANT: Escrow behavior
+            metadata={
+                "trip_id": str(trip_id),
+                "member_id": str(member_id),
+                "platform_fee": str(platform_fee)
+            }
+            # For real Connect:
+            # application_fee_amount=platform_fee,
+            # transfer_data={"destination": "acct_12345"}
+        )
+    except Exception as e:
+        logger.error(f"Stripe error: {e}")
+        raise
 
     return PaymentResponse(
         id=uuid.uuid4(),  # Local DB ID (to be created by routes)
@@ -79,19 +63,27 @@ async def create_payment_intent(
         gateway=PaymentGateway.STRIPE,
         status=PaymentStatus.PENDING,
         payment_type=PaymentType.DEPOSIT,
-        stripe_client_secret=intent["client_secret"]
+        stripe_client_secret=intent.client_secret
     )
 
 
 async def capture_payment(payment_intent_id: str) -> bool:
     """Capture a previously authorized PaymentIntent (Release Escrow)."""
     logger.info("Capturing Stripe PaymentIntent %s", payment_intent_id)
-    result = MockStripe.PaymentIntent_capture(payment_intent_id)
-    return result["status"] == "succeeded"
+    try:
+        intent = stripe.PaymentIntent.capture(payment_intent_id)
+        return intent.status == "succeeded"
+    except Exception as e:
+        logger.error(f"Failed to capture PaymentIntent {payment_intent_id}: {e}")
+        return False
 
 
 async def refund_payment(payment_intent_id: str) -> bool:
     """Cancel an uncaptured PaymentIntent (Refund Escrow)."""
     logger.info("Canceling Stripe PaymentIntent %s", payment_intent_id)
-    result = MockStripe.PaymentIntent_cancel(payment_intent_id)
-    return result["status"] == "canceled"
+    try:
+        intent = stripe.PaymentIntent.cancel(payment_intent_id)
+        return intent.status == "canceled"
+    except Exception as e:
+        logger.error(f"Failed to cancel PaymentIntent {payment_intent_id}: {e}")
+        return False

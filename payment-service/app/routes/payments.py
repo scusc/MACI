@@ -25,6 +25,29 @@ logger = logging.getLogger("rally.payment.routes")
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 
+@router.post("/onboard")
+async def onboard_organizer(organizer_id: uuid.UUID):
+    """
+    Generate a Stripe Connect onboarding link for an organizer.
+    """
+    try:
+        import stripe
+        # Create an account
+        account = stripe.Account.create(type="express")
+        
+        # Create an account link
+        account_link = stripe.AccountLink.create(
+            account=account.id,
+            refresh_url="https://rally.app/reauth",
+            return_url="https://rally.app/return",
+            type="account_onboarding",
+        )
+        return {"url": account_link.url, "account_id": account.id}
+    except Exception as e:
+        logger.error("Stripe onboarding error: %s", str(e))
+        raise HTTPException(status_code=500, detail="Onboarding failed")
+
+
 @router.post("/create", response_model=PaymentResponse)
 async def create_payment(
     body: PaymentCreate,

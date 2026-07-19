@@ -21,6 +21,8 @@ from app.services.trip_lifecycle import (
     InvalidTransitionError
 )
 
+from maci_core.events.bus import bus_manager
+from maci_core.events.schemas import TripThresholdReachedEvent
 from maci_core.schemas.rally import (
     TripCreate, TripUpdate, TripResponse, TripListResponse,
     MemberInvite, MemberCommit, MemberDecline,
@@ -350,8 +352,21 @@ async def mark_member_paid(
 
     if activated:
         logger.info("🎉 Trip %s activated after %s paid!", trip_id, member.email)
-        # TODO: Trigger notification-service → "Trip is ON!" to all members
-        # TODO: Trigger payment-service → release escrow
+        
+        # Publish event to Service Bus -> triggers Escrow Capture and AI Notifications
+        # We need the total amount from members who paid. 
+        # For simplicity in this demo, we assume estimated_cost * members.
+        # In prod, we sum member.committed_amount.
+        total_committed = trip.estimated_cost_per_person * sum(1 for m in trip.members if m.status in ("paid", "committed"))
+        
+        event = TripThresholdReachedEvent(
+            trip_id=str(trip.id),
+            trip_title=trip.title,
+            organizer_id=str(trip.organizer_id),
+            total_committed_amount=total_committed
+        )
+        await bus_manager.publish_event("trip.threshold.reached", event.model_dump())
+        logger.info("Published trip.threshold.reached event to Service Bus")
 
     progress = await get_commitment_progress(db, trip)
     return _build_trip_response(trip, progress)

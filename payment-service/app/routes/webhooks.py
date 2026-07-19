@@ -10,6 +10,8 @@ from sqlalchemy import select
 
 from app.db import get_db
 from app.models.models import Payment
+from maci_core.events.bus import bus_manager
+from maci_core.events.schemas import PaymentIntentAuthorizedEvent
 
 logger = logging.getLogger("rally.payment.webhooks")
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -35,7 +37,16 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             payment.status = "held"
             await db.commit()
             
-            # TODO: Call Group Service to mark member as Paid and check threshold
+            # Publish event to Service Bus so Group Service can process it async
+            event = PaymentIntentAuthorizedEvent(
+                trip_id=str(payment.trip_id),
+                member_id=str(payment.member_id),
+                payment_intent_id=intent_id,
+                amount=payment.amount,
+                currency=payment.currency
+            )
+            await bus_manager.publish_event("payment.authorized", event.model_dump())
+            logger.info("Published payment.authorized event for Member %s", payment.member_id)
             
     return {"status": "success"}
 
