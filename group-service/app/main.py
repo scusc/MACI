@@ -12,8 +12,7 @@ from app.config import settings
 from app.routes.trips import router as trips_router
 from app.routes.organizer import router as organizer_router
 from app.routes.auth import router as auth_router
-from maci_core.db.session import engine
-from maci_core.models.base import Base
+from maci_core.database import engine, Base
 import app.models.models  # Import all models so metadata binds them
 
 logging.basicConfig(
