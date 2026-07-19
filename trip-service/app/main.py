@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from maci_core.config import settings
 from maci_core.core.exceptions import MACIError
 from app.api.trips import router as trips_router
+from app.api.rally import router as rally_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,6 +39,7 @@ async def maci_error_handler(request, exc: MACIError):
     )
 
 app.include_router(trips_router, prefix=settings.API_PREFIX)
+app.include_router(rally_router)
 
 @app.get("/health")
 async def health():

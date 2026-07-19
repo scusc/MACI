@@ -66,6 +66,14 @@ resource "azurerm_postgresql_flexible_server_database" "maci" {
   collation = "en_US.utf8"
 }
 
+# Create the Rally database
+resource "azurerm_postgresql_flexible_server_database" "rally" {
+  name      = "rally"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  charset   = "UTF8"
+  collation = "en_US.utf8"
+}
+
 # ── Store the DB password in Key Vault ────────────────────────────────
 resource "azurerm_key_vault_secret" "db_password" {
   name         = "db-password"
@@ -76,6 +84,12 @@ resource "azurerm_key_vault_secret" "db_password" {
 resource "azurerm_key_vault_secret" "db_connection_string" {
   name         = "db-connection-string"
   value        = "postgresql+asyncpg://maciadmin:${random_password.db_password.result}@${azurerm_postgresql_flexible_server.main.fqdn}:5432/maci?ssl=require"
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
+resource "azurerm_key_vault_secret" "rally_db_connection_string" {
+  name         = "rally-db-connection-string"
+  value        = "postgresql+asyncpg://maciadmin:${random_password.db_password.result}@${azurerm_postgresql_flexible_server.main.fqdn}:5432/rally?ssl=require"
   key_vault_id = azurerm_key_vault.kv.id
 }
 

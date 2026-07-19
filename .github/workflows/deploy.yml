@@ -1,0 +1,73 @@
+name: Build and Deploy Rally Services
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  ACR_NAME: acrmacidemo123
+  AKS_CLUSTER: aks-maci-demo
+  RESOURCE_GROUP: rg-maci-demo-westus3
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-gateway, group-service, payment-service, notification-service, trip-service]
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to ACR
+      run: |
+        az acr login --name ${{ env.ACR_NAME }}
+
+    - name: Build Docker Image
+      run: |
+        docker build -f Dockerfile \
+          --build-arg SERVICE_NAME=${{ matrix.service }} \
+          -t ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:${{ github.sha }} \
+          -t ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:latest \
+          .
+
+    - name: Push Image to ACR
+      run: |
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:${{ github.sha }}
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:latest
+
+  deploy:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Set AKS Context
+      uses: azure/aks-set-context@v3
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        cluster-name: ${{ env.AKS_CLUSTER }}
+
+    - name: Deploy to AKS
+      run: |
+        # In a real environment we would use kustomize or helm to inject the specific git SHA tags.
+        # For this prototype we deploy the 'latest' tags that were just pushed.
+        kubectl apply -f k8s/rally-platform.yaml
+        
+        # Restart deployments to ensure they pull the new 'latest' image
+        kubectl rollout restart deployment api-gateway -n rally
+        kubectl rollout restart deployment group-service -n rally
+        kubectl rollout restart deployment payment-service -n rally
+        kubectl rollout restart deployment notification-service -n rally
+        kubectl rollout restart deployment trip-service -n rally
