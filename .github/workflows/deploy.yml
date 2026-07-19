@@ -6,9 +6,9 @@ on:
       - main
 
 env:
-  ACR_NAME: acrmacidemo123
-  AKS_CLUSTER: aks-maci-demo
-  RESOURCE_GROUP: rg-maci-demo-westus3
+  ACR_NAME: acrmacidev123
+  AKS_CLUSTER: aks-maci-dev
+  RESOURCE_GROUP: rg-maci-dev-eastus
 
 jobs:
   build_and_push:

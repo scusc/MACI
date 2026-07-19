@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: api-gateway
-        image: acrmacidemo123.azurecr.io/api-gateway:latest
+        image: acrmacidev123.azurecr.io/api-gateway:latest
         ports:
         - containerPort: 80
         env:
@@ -63,7 +63,7 @@ spec:
     spec:
       containers:
       - name: group-service
-        image: acrmacidemo123.azurecr.io/group-service:latest
+        image: acrmacidev123.azurecr.io/group-service:latest
         ports:
         - containerPort: 80
         env:
@@ -72,7 +72,7 @@ spec:
         # In a real environment, DB URL comes from Key Vault via CSI Driver.
         # Hardcoding the mock for the template placeholder.
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:dummy@psql2-maci-demo.postgres.database.azure.com:5432/rally?ssl=require"
+          value: "postgresql+asyncpg://maciadmin:dummy@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
 ---
 apiVersion: v1
 kind: Service
@@ -106,14 +106,14 @@ spec:
     spec:
       containers:
       - name: payment-service
-        image: acrmacidemo123.azurecr.io/payment-service:latest
+        image: acrmacidev123.azurecr.io/payment-service:latest
         ports:
         - containerPort: 80
         env:
         - name: GROUP_SERVICE_URL
           value: "http://group-service"
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:dummy@psql2-maci-demo.postgres.database.azure.com:5432/rally?ssl=require"
+          value: "postgresql+asyncpg://maciadmin:dummy@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
 ---
 apiVersion: v1
 kind: Service
@@ -147,7 +147,7 @@ spec:
     spec:
       containers:
       - name: notification-service
-        image: acrmacidemo123.azurecr.io/notification-service:latest
+        image: acrmacidev123.azurecr.io/notification-service:latest
         ports:
         - containerPort: 80
 ---
@@ -183,7 +183,7 @@ spec:
     spec:
       containers:
       - name: trip-service
-        image: acrmacidemo123.azurecr.io/trip-service:latest
+        image: acrmacidev123.azurecr.io/trip-service:latest
         ports:
         - containerPort: 80
 ---
