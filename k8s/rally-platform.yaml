@@ -22,6 +22,7 @@ spec:
       containers:
       - name: api-gateway
         image: acrmacidev123.azurecr.io/api-gateway:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         env:
@@ -64,6 +65,7 @@ spec:
       containers:
       - name: group-service
         image: acrmacidev123.azurecr.io/group-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         env:
@@ -107,6 +109,7 @@ spec:
       containers:
       - name: payment-service
         image: acrmacidev123.azurecr.io/payment-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         env:
@@ -148,6 +151,7 @@ spec:
       containers:
       - name: notification-service
         image: acrmacidev123.azurecr.io/notification-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
 ---
@@ -184,6 +188,7 @@ spec:
       containers:
       - name: trip-service
         image: acrmacidev123.azurecr.io/trip-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
 ---
