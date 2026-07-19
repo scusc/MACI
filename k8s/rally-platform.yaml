@@ -71,10 +71,12 @@ spec:
         env:
         - name: TRIP_SERVICE_URL
           value: "http://trip-service"
-        # In a real environment, DB URL comes from Key Vault via CSI Driver.
-        # Hardcoding the mock for the template placeholder.
+        # Use Kubernetes Secret for database URL (populated from Key Vault in real setup)
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:dummy@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+          valueFrom:
+            secretKeyRef:
+              name: rally-db-secret
+              key: DATABASE_URL
 ---
 apiVersion: v1
 kind: Service
@@ -116,7 +118,10 @@ spec:
         - name: GROUP_SERVICE_URL
           value: "http://group-service"
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:dummy@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+          valueFrom:
+            secretKeyRef:
+              name: rally-db-secret
+              key: DATABASE_URL
 ---
 apiVersion: v1
 kind: Service
