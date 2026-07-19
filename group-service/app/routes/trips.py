@@ -25,7 +25,7 @@ from maci_core.schemas.rally import (
     TripCreate, TripUpdate, TripResponse, TripListResponse,
     MemberInvite, MemberCommit, MemberDecline,
     MemberSummary, CommitmentProgress,
-    TripStatus, MemberStatus, MemberRole,
+    TripStatus, MemberStatus, MemberRole, BulkInviteRequest
 )
 
 logger = logging.getLogger("rally.group.routes")
@@ -243,6 +243,51 @@ async def invite_members(
     progress = await get_commitment_progress(db, trip)
 
     logger.info("Invited %d members to trip %s", len(body.emails), trip_id)
+    return _build_trip_response(trip, progress)
+
+
+@router.post("/{trip_id}/bulk-invite", response_model=TripResponse)
+async def bulk_invite_members(
+    trip_id: uuid.UUID,
+    body: BulkInviteRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk invite members to a trip using a JSON payload."""
+    trip = await _load_trip(db, trip_id)
+
+    if trip.status not in ("draft", "collecting"):
+        raise HTTPException(status_code=400, detail=f"Cannot invite in '{trip.status}' status")
+
+    existing_emails = {m.email for m in trip.members}
+    added_count = 0
+
+    for item in body.members:
+        if item.email in existing_emails:
+            continue
+        member = TripMember(
+            trip_id=trip.id,
+            email=item.email,
+            display_name=item.display_name,
+            role="member",
+            status="invited",
+            share_amount=trip.estimated_cost_per_person,
+            platform_fee=_calculate_fee(trip.estimated_cost_per_person or 0),
+        )
+        db.add(member)
+        added_count += 1
+
+    # Auto-transition to collecting if still in draft
+    if trip.status == "draft" and added_count > 0:
+        try:
+            await transition_trip(db, trip, "collecting", reason="Bulk invitations sent")
+        except InvalidTransitionError:
+            pass
+
+    await db.flush()
+    trip = await _load_trip(db, trip_id)
+    progress = await get_commitment_progress(db, trip)
+
+    logger.info("Bulk invited %d members to trip %s", added_count, trip_id)
     return _build_trip_response(trip, progress)
 
 

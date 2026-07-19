@@ -33,6 +33,20 @@ class User(Base):
     # Relationships
     organized_trips = relationship("Trip", back_populates="organizer")
     memberships = relationship("TripMember", back_populates="user")
+    brand_config = relationship("BrandConfig", back_populates="organizer", uselist=False, cascade="all, delete-orphan")
+
+
+class BrandConfig(Base):
+    __tablename__ = "rally_brand_configs"
+
+    organizer_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id", ondelete="CASCADE"), primary_key=True)
+    primary_color = Column(String(7), nullable=False, default="#000000")
+    logo_url = Column(String(1000))
+    company_name = Column(String(100), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    organizer = relationship("User", back_populates="brand_config")
 
 
 class Trip(Base):

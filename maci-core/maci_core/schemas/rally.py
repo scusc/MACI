@@ -270,3 +270,44 @@ class PriceAlert(BaseModel):
     direction: str                # "up" or "down"
     cumulative_change_since_creation: int  # Total cost of delay
     message: str                  # AI-generated alert message
+
+# ── B2B2C Schemas ──────────────────────────────────────────────────────────────
+
+class BrandConfigCreate(BaseModel):
+    """Update or create branding for an organizer."""
+    primary_color: str = Field(..., pattern="^#[0-9A-Fa-f]{6}$")
+    logo_url: Optional[str] = None
+    company_name: str = Field(..., min_length=2, max_length=100)
+
+
+class BrandConfigResponse(BaseModel):
+    """Branding configuration details."""
+    organizer_id: uuid.UUID
+    primary_color: str
+    logo_url: Optional[str]
+    company_name: str
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class BulkInviteItem(BaseModel):
+    """Single item in a bulk invite."""
+    email: str = Field(..., min_length=1, max_length=100)
+    display_name: Optional[str] = None
+
+
+class BulkInviteRequest(BaseModel):
+    """Request to bulk invite members (JSON format)."""
+    members: List[BulkInviteItem]
+    message: Optional[str] = None
+
+
+class OrganizerDashboardStats(BaseModel):
+    """High-level metrics for the organizer."""
+    total_trips_active: int
+    total_trips_completed: int
+    total_revenue_collected: int      # cents (amount paid minus platform fees)
+    total_platform_fees_paid: int     # cents
+    average_conversion_rate: float    # percentage (0-100)
+    upcoming_payouts: int             # cents (escrow held that will release soon)
