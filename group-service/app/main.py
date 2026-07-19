@@ -12,6 +12,9 @@ from app.config import settings
 from app.routes.trips import router as trips_router
 from app.routes.organizer import router as organizer_router
 from app.routes.auth import router as auth_router
+from maci_core.db.session import engine
+from maci_core.models.base import Base
+import app.models.models  # Import all models so metadata binds them
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,7 +27,11 @@ logger = logging.getLogger("rally.group")
 async def lifespan(app: FastAPI):
     """Lifecycle hook for startup/shutdown."""
     logger.info("Starting Rally Group Service...")
-    # Add any startup tasks here (e.g., initializing redis pools if needed)
+    
+    # Create DB tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
     yield
     logger.info("Shutting down Rally Group Service...")
     # Add any shutdown tasks here
