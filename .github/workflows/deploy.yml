@@ -1,4 +1,4 @@
-name: Build and Deploy Rally Services
+name: Slice CI/CD to Azure AKS
 
 on:
   push:
@@ -6,68 +6,85 @@ on:
       - main
 
 env:
-  ACR_NAME: acrmacidev123
-  AKS_CLUSTER: aks-maci-dev
-  RESOURCE_GROUP: rg-maci-dev-eastus
+  REGISTRY_NAME: sliceacr
+  CLUSTER_NAME: aks-slice-dev
+  RESOURCE_GROUP: rg-slice-dev
 
 jobs:
-  build_and_push:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [api-gateway, group-service, payment-service, notification-service, trip-service]
-    
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: Login to ACR
-      run: |
-        az acr login --name ${{ env.ACR_NAME }}
-
-    - name: Build Docker Image
-      run: |
-        docker build -f Dockerfile \
-          --build-arg SERVICE_NAME=${{ matrix.service }} \
-          -t ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:${{ github.sha }} \
-          -t ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:latest \
-          .
-
-    - name: Push Image to ACR
-      run: |
-        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:${{ github.sha }}
-        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:latest
-
-  deploy:
-    needs: build_and_push
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Set AKS Context
-      uses: azure/aks-set-context@v3
-      with:
-        resource-group: ${{ env.RESOURCE_GROUP }}
-        cluster-name: ${{ env.AKS_CLUSTER }}
+      - name: Run Tests (Pytest)
+        run: |
+          pip install -r maci-core/requirements.txt
+          pip install pytest pytest-asyncio
+          pytest
 
-    - name: Deploy to AKS
-      run: |
-        # In a real environment we would use kustomize or helm to inject the specific git SHA tags.
-        # For this prototype we deploy the 'latest' tags that were just pushed.
-        kubectl apply -f k8s/rally-platform.yaml
-        
-        # Restart deployments to ensure they pull the new 'latest' image
-        kubectl rollout restart deployment api-gateway -n rally
-        kubectl rollout restart deployment group-service -n rally
-        kubectl rollout restart deployment payment-service -n rally
-        kubectl rollout restart deployment notification-service -n rally
-        kubectl rollout restart deployment trip-service -n rally
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Run Database Migrations (Alembic)
+        run: |
+          pip install alembic psycopg2-binary
+          cd db-migrations
+          alembic upgrade head
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and Push Backend (Auth Service)
+        run: |
+          docker build --build-arg SERVICE_NAME=auth-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:${{ github.sha }}
+
+      - name: Build and Push Backend (Asset Service)
+        run: |
+          docker build --build-arg SERVICE_NAME=asset-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:${{ github.sha }}
+
+      - name: Build and Push Backend (Payment Service)
+        run: |
+          docker build --build-arg SERVICE_NAME=payment-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }}
+
+      - name: Build and Push Frontend
+        run: |
+          cd frontend
+          docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}
+
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+
+      - name: Deploy to AKS
+        uses: Azure/k8s-deploy@v4
+        with:
+          manifests: |
+            k8s/auth-service.yaml
+            k8s/asset-service.yaml
+            k8s/payment-service.yaml
+            k8s/frontend.yaml
+          images: |
+            ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:${{ github.sha }}
+            ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:${{ github.sha }}
+            ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }}
+            ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}

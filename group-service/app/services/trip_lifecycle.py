@@ -12,9 +12,26 @@ from datetime import datetime
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.models import Trip, TripMember, Payment
+from app.models.models import Trip, TripMember, Payment, User
 
 logger = logging.getLogger("rally.group.lifecycle")
+
+async def update_karma(db: AsyncSession, user_id: str, delta: int) -> int:
+    """
+    Update a user's Karma score by the given delta.
+    Ensures Karma score does not drop below 0 or exceed 1000.
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if user:
+        current_karma = getattr(user, 'karma_score', 100)
+        new_karma = max(0, min(1000, current_karma + delta))
+        user.karma_score = new_karma
+        await db.flush()
+        logger.info(f"Updated karma for user {user_id}: {current_karma} -> {new_karma} (delta: {delta})")
+        return new_karma
+    return 100
 
 # Valid state transitions
 VALID_TRANSITIONS = {
@@ -59,6 +76,13 @@ async def transition_trip(
         "Trip %s transitioned: %s → %s (reason: %s)",
         trip.id, old_status, new_status, reason or "none"
     )
+    
+    # ── Karma Reward Engine ──────────────────────────────────────────────────
+    if new_status == "completed":
+        # Reward all members who actually participated
+        for member in trip.members:
+            if member.user_id and member.status == "paid":
+                await update_karma(db, str(member.user_id), 5)
 
     return trip
 

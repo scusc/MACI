@@ -1,0 +1,60 @@
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h2>My Pools</h2>
+    <p>Manage your escrow commitments and upcoming experiences.</p>
+  </div>
+
+  <div class="kyc-banner" *ngIf="currentUser()?.kyc_status === 'unverified'">
+    <div class="kyc-content">
+      <strong>Identity Verification Required</strong>
+      <p>You cannot join or participate in pools until you verify your government ID.</p>
+    </div>
+    <button class="btn-primary" (click)="startKYC()">Verify Identity</button>
+  </div>
+
+  <div class="pools-grid" *ngIf="!isLoading(); else loadingState">
+    <div class="card pool-card" *ngFor="let pool of pools()">
+      <div class="pool-header">
+        <h3 class="pool-title">{{ pool.assetTitle }}</h3>
+        <span [class]="getStatusClass(pool.status)">
+          {{ pool.status | uppercase }}
+        </span>
+      </div>
+
+      <div class="pool-stats">
+        <div class="stat-box">
+          <span class="stat-label">Commitment</span>
+          <span class="stat-value">${{ pool.costPerSlice }}</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Capacity</span>
+          <span class="stat-value">{{ pool.slicesCommitted }} / {{ pool.totalSlices }}</span>
+        </div>
+      </div>
+
+      <div class="progress-container">
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="(pool.slicesCommitted / pool.totalSlices) * 100"></div>
+        </div>
+        <span class="progress-text">{{ (pool.slicesCommitted / pool.totalSlices) * 100 | number:'1.0-0' }}% Funded</span>
+      </div>
+
+      <div class="pool-actions">
+        <!-- If locked, Escrow is holding funds. Display cancel/vibe check option -->
+        <button *ngIf="pool.status === 'locked'" class="btn-secondary danger" (click)="cancelAuthorization(pool.id)">
+          Initiate Vibe Check Failure
+        </button>
+        <!-- If funding, allow sharing link -->
+        <button *ngIf="pool.status === 'funding'" class="btn-primary" [disabled]="currentUser()?.kyc_status === 'unverified'">
+          Invite Friends
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #loadingState>
+    <div style="text-align: center; padding: 3rem; color: var(--color-gray-500);">
+      Loading your escrow pools...
+    </div>
+  </ng-template>
+</div>

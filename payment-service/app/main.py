@@ -27,12 +27,17 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Rally Payment Service...")
 
 
+from maci_core.observability import setup_observability
+
 app = FastAPI(
     title="Rally Payment Service",
     description="Manages escrow, Stripe/Razorpay integrations, and split payments.",
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Inject Prometheus metrics and OpenTelemetry tracing
+setup_observability(app, "payment-service")
 
 # CORS configuration
 app.add_middleware(

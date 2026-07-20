@@ -1,5 +1,5 @@
 """
-Rally Payment Service — Payment API routes.
+Rally Payment Service — Payment API routes for Slice (Micro-pooling).
 """
 
 import logging
@@ -9,15 +9,17 @@ from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.db import get_db
 from app.models.models import Payment
+from maci_core.models.pool import Pool, PoolMember
 from app.services import stripe_gateway, razorpay_gateway, escrow_manager
 from app.services.split_calculator import calculate_platform_fee
 
-from maci_core.schemas.rally import (
+from maci_core.schemas.payment import (
     PaymentCreate, PaymentResponse, EscrowRelease, RefundResult,
-    PaymentGateway, PaymentStatus
+    PaymentGateway, PaymentType
 )
 
 logger = logging.getLogger("rally.payment.routes")
@@ -26,9 +28,9 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 @router.post("/onboard")
-async def onboard_organizer(organizer_id: uuid.UUID):
+async def onboard_organizer(user_id: uuid.UUID):
     """
-    Generate a Stripe Connect onboarding link for an organizer.
+    Generate a Stripe Connect onboarding link for a host.
     """
     try:
         import stripe
@@ -38,8 +40,8 @@ async def onboard_organizer(organizer_id: uuid.UUID):
         # Create an account link
         account_link = stripe.AccountLink.create(
             account=account.id,
-            refresh_url="https://rally.app/reauth",
-            return_url="https://rally.app/return",
+            refresh_url="https://slice.app/reauth",
+            return_url="https://slice.app/return",
             type="account_onboarding",
         )
         return {"url": account_link.url, "account_id": account.id}
@@ -54,38 +56,41 @@ async def create_payment(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Create a new payment for a trip member.
-    Generates a Stripe PaymentIntent or Razorpay Order.
+    Create a new pre-authorization payment for a Pool Member.
+    We do NOT capture funds here. We authorize the card to hold the slice.
     """
     platform_fee = calculate_platform_fee(body.amount)
     
     payment = Payment(
-        trip_id=body.trip_id,
+        pool_id=body.pool_id,
         member_id=body.member_id,
         amount=body.amount,
         platform_fee=platform_fee,
         currency=body.currency,
         gateway=body.gateway.value,
         payment_type=body.payment_type.value,
-        status="pending"
+        status="authorized" # Held in escrow
     )
     db.add(payment)
     await db.flush()
 
     try:
         if body.gateway == PaymentGateway.STRIPE:
+            # We must use capture_method='manual' to hold the funds
             response = await stripe_gateway.create_payment_intent(
-                trip_id=body.trip_id,
+                trip_id=body.pool_id, # Using pool_id internally
                 member_id=body.member_id,
                 amount=body.amount,
                 platform_fee=platform_fee,
-                currency=body.currency
+                currency=body.currency,
+                capture_method="manual" 
             )
             payment.gateway_payment_id = response.stripe_client_secret.split("_secret_")[0]
         
         elif body.gateway == PaymentGateway.RAZORPAY:
+            # Razorpay auth and capture is slightly different, but concept holds
             response = await razorpay_gateway.create_order(
-                trip_id=body.trip_id,
+                trip_id=body.pool_id,
                 member_id=body.member_id,
                 amount=body.amount,
                 platform_fee=platform_fee,
@@ -104,17 +109,17 @@ async def create_payment(
 
     except Exception as e:
         await db.rollback()
-        logger.error("Failed to create payment: %s", str(e))
+        logger.error("Failed to create pre-authorization: %s", str(e))
         raise HTTPException(status_code=500, detail="Payment gateway error")
 
 
-@router.post("/{trip_id}/release-escrow", response_model=EscrowRelease)
-async def release_trip_escrow(trip_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Release all held funds for a trip (threshold met)."""
-    return await escrow_manager.release_trip_escrow(db, trip_id)
+@router.post("/{pool_id}/release-escrow", response_model=EscrowRelease)
+async def release_pool_escrow(pool_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Capture all authorized funds for a pool (threshold met)."""
+    return await escrow_manager.release_trip_escrow(db, pool_id)
 
 
-@router.post("/{trip_id}/refund-all", response_model=RefundResult)
-async def refund_trip_escrow(trip_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Refund all held funds for a trip (trip cancelled)."""
-    return await escrow_manager.refund_trip_escrow(db, trip_id)
+@router.post("/{pool_id}/refund-all", response_model=RefundResult)
+async def refund_pool_escrow(pool_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Cancel all authorizations for a pool (funding failed)."""
+    return await escrow_manager.refund_trip_escrow(db, pool_id)

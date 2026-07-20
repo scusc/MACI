@@ -16,14 +16,30 @@ from maci_core.events.schemas import PaymentIntentAuthorizedEvent
 logger = logging.getLogger("rally.payment.webhooks")
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
+import stripe
+from maci_core.config import settings
+
 @router.post("/stripe")
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    """Handle Stripe webhooks."""
-    payload = await request.json()
-    # In production, verify stripe signature here
+    """Handle Stripe webhooks securely."""
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
     
-    event_type = payload.get("type")
-    data = payload.get("data", {}).get("object", {})
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError as e:
+        # Invalid payload
+        logger.error(f"Invalid Stripe payload: {e}")
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        logger.error(f"Invalid Stripe signature: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+        
+    event_type = event.get("type")
+    data = event.get("data", {}).get("object", {})
     
     if event_type == "payment_intent.amount_capturable_updated":
         # This means the manual capture payment was authorized and is now held in escrow

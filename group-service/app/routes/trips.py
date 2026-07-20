@@ -108,16 +108,36 @@ async def _load_trip(db: AsyncSession, trip_id: uuid.UUID) -> Trip:
     return trip
 
 
+# ── JWT Security Dependency ──────────────────────────────────────────────────
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from maci_core.core.security import verify_token
+
+security = HTTPBearer()
+
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    try:
+        payload = verify_token(credentials.credentials, expected_type="access")
+        return payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
 # ── Trip CRUD ──────────────────────────────────────────────────────────────────
 
 @router.post("", response_model=TripResponse, status_code=status.HTTP_201_CREATED)
 async def create_trip(
     body: TripCreate,
-    organizer_email: str = "demo@rally.app",  # TODO: Replace with auth
+    user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new Rally trip."""
-    organizer = await _get_or_create_user(db, organizer_email)
+    """Create a new Rally trip. Enforces KYC verification."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    organizer = result.scalar_one_or_none()
+    
+    if not organizer:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if getattr(organizer, 'kyc_status', 'unverified') != 'verified':
+        raise HTTPException(status_code=403, detail="Identity Verification (KYC) Required to create pools")
 
     trip = Trip(
         title=body.title,
@@ -298,13 +318,22 @@ async def commit_member(
     trip_id: uuid.UUID,
     member_id: uuid.UUID,
     body: MemberCommit,
+    user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Member commits to the trip. This triggers the payment flow.
-    The member's status transitions: invited/viewed → committed.
-    Actual payment is handled separately via the payment-service.
+    Enforces JWT identity match and KYC Verification.
     """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user or getattr(user, 'kyc_status', 'unverified') != 'verified':
+        raise HTTPException(status_code=403, detail="Identity Verification (KYC) Required to commit funds")
+        
+    if str(user.id) != str(member_id):
+        raise HTTPException(status_code=403, detail="You can only commit on behalf of yourself")
+
     trip = await _load_trip(db, trip_id)
 
     if trip.status != "collecting":
@@ -395,6 +424,57 @@ async def decline_member(
     logger.info("Member %s declined trip %s (reason: %s)", member.email, trip_id, body.reason or "none")
     return {"status": "declined", "member_id": str(member_id)}
 
+
+# ── Vibe Check & Karma Engine ──────────────────────────────────────────────────
+
+from app.services.trip_lifecycle import update_karma
+from maci_core.events.bus import bus_manager
+
+@router.post("/{trip_id}/members/{member_id}/vibe-check-fail")
+async def vibe_check_fail(
+    trip_id: uuid.UUID,
+    member_id: uuid.UUID,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Initiates a Vibe Check Failure. Applies a -15 Karma penalty.
+    If >50% of the pool fails the vibe check, the trip dissolves.
+    """
+    trip = await _load_trip(db, trip_id)
+    
+    member = next((m for m in trip.members if m.id == member_id), None)
+    if not member or str(member.user_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="Not authorized to vote for this member")
+        
+    if trip.status not in ("collecting", "active"):
+        raise HTTPException(status_code=400, detail="Vibe check window closed")
+        
+    member.status = "declined"
+    member.declined_at = datetime.utcnow()
+    
+    # Apply Karma Penalty
+    await update_karma(db, str(member.user_id), -15)
+    await db.flush()
+    
+    # Evaluate 50% Threshold
+    total = len(trip.members)
+    declined = sum(1 for m in trip.members if m.status == "declined")
+    
+    if (declined / total) > 0.5:
+        logger.warning(f"Vibe Check Threshold Reached (>50%). Dissolving Pool {trip_id}")
+        await transition_trip(db, trip, "cancelled", reason="Vibe Check Failed by Majority")
+        
+        # Publish event to Service Bus so Escrow Manager refunds the entire pool
+        event = {"trip_id": str(trip.id), "reason": "vibe_check_failed"}
+        await bus_manager.publish_event("trip.cancelled", event)
+    else:
+        # Just cancel this individual's authorization
+        event = {"trip_id": str(trip.id), "member_id": str(member.id)}
+        await bus_manager.publish_event("payment.authorization.cancelled", event)
+        
+    progress = await get_commitment_progress(db, trip)
+    return _build_trip_response(trip, progress)
 
 # ── Trip Actions ───────────────────────────────────────────────────────────────
 

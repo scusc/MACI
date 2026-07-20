@@ -1,21 +1,13 @@
 """ORM models package — re-exports all models for Alembic and app usage."""
 
-from maci_core.models.organization import Organization
-from maci_core.models.trip import Trip
-from maci_core.models.traveler import Traveler
-from maci_core.models.cluster import Cluster
-from maci_core.models.negotiation import NegotiationRound
-from maci_core.models.proposal import FlightProposal
-from maci_core.models.consensus import ConsensusResult
-from maci_core.models.itinerary import TravelerItinerary
+from maci_core.models.user import User
+from maci_core.models.asset import Asset
+from maci_core.models.pool import Pool
+from maci_core.models.pool_member import PoolMember
 
 __all__ = [
-    "Organization",
-    "Trip",
-    "Traveler",
-    "Cluster",
-    "NegotiationRound",
-    "FlightProposal",
-    "ConsensusResult",
-    "TravelerItinerary",
+    "User",
+    "Asset",
+    "Pool",
+    "PoolMember",
 ]

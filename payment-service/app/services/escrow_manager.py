@@ -1,39 +1,37 @@
 """
-Rally Payment Service — Escrow Manager.
-Orchestrates holding and releasing funds across Stripe and Razorpay.
+Slice Payment Service — Escrow Manager.
+Orchestrates holding and releasing funds across Stripe and Razorpay for Pools.
 """
 
 import logging
 import uuid
 from datetime import datetime
-from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import Payment
 from app.services import stripe_gateway, razorpay_gateway
-from maci_core.schemas.rally import EscrowRelease, RefundResult
+from maci_core.schemas.payment import EscrowRelease, RefundResult
 
 logger = logging.getLogger("rally.payment.escrow")
 
 
-async def release_trip_escrow(db: AsyncSession, trip_id: uuid.UUID) -> EscrowRelease:
+async def release_pool_escrow(db: AsyncSession, pool_id: uuid.UUID) -> EscrowRelease:
     """
-    Release all held payments for a trip (threshold met).
-    Captures Stripe PaymentIntents and releases Razorpay Route holds.
+    Capture all authorized payments for a pool.
+    Called when the pool reaches the 'CONFIRMED' state (post Vibe Check window).
     """
-    logger.info("Releasing escrow for trip %s", trip_id)
+    logger.info("Capturing escrow for pool %s (Confirmed State)", pool_id)
 
     result = await db.execute(
         select(Payment)
-        .where(Payment.trip_id == trip_id)
-        .where(Payment.status == "held")
+        .where(Payment.pool_id == pool_id)
+        .where(Payment.status == "authorized")
     )
     held_payments = result.scalars().all()
 
     total_released = 0
-    released_count = 0
     gateway_ids = []
 
     for payment in held_payments:
@@ -44,40 +42,43 @@ async def release_trip_escrow(db: AsyncSession, trip_id: uuid.UUID) -> EscrowRel
             success = await razorpay_gateway.release_escrow(payment.gateway_payment_id, payment.gateway_transfer_id)
 
         if success:
-            payment.status = "released"
+            payment.status = "captured"
             payment.escrow_released_at = datetime.utcnow()
             total_released += payment.amount
-            released_count += 1
             gateway_ids.append(payment.gateway_payment_id)
-            logger.info("Released payment %s (%d cents)", payment.id, payment.amount)
+            logger.info("Captured payment %s (%d cents)", payment.id, payment.amount)
         else:
-            logger.error("Failed to release payment %s", payment.id)
+            logger.error("Failed to capture payment %s", payment.id)
 
     await db.commit()
 
+    # Trigger vendor payout via Stripe Connect Express
+    # In reality, we'd query the Asset table to find the host's stripe_connect_id
+    # For MVP, we mock the host's connected account ID
+    vendor_stripe_account_id = "acct_mock_123"
+    payout_success = await execute_vendor_payout(db, pool_id, vendor_stripe_account_id)
+
     return EscrowRelease(
-        trip_id=trip_id,
-        total_released=total_released,
-        payments_released=released_count,
-        gateway_transfer_ids=gateway_ids
+        pool_id=pool_id,
+        amount_released=total_released,
+        status="success" if (held_payments and payout_success) else "partial_failure"
     )
 
 
-async def refund_trip_escrow(db: AsyncSession, trip_id: uuid.UUID) -> RefundResult:
+async def refund_pool_escrow(db: AsyncSession, pool_id: uuid.UUID) -> RefundResult:
     """
-    Refund/Cancel all held payments for a trip (trip cancelled).
+    Refund/Cancel all authorized payments for a pool (funding failed/expired).
     """
-    logger.info("Refunding escrow for trip %s", trip_id)
+    logger.info("Canceling authorizations for pool %s", pool_id)
 
     result = await db.execute(
         select(Payment)
-        .where(Payment.trip_id == trip_id)
-        .where(Payment.status == "held")
+        .where(Payment.pool_id == pool_id)
+        .where(Payment.status == "authorized")
     )
     held_payments = result.scalars().all()
 
     total_refunded = 0
-    refunded_count = 0
     failed_refunds = []
 
     for payment in held_payments:
@@ -91,18 +92,97 @@ async def refund_trip_escrow(db: AsyncSession, trip_id: uuid.UUID) -> RefundResu
             payment.status = "refunded"
             payment.refunded_at = datetime.utcnow()
             total_refunded += payment.amount
-            refunded_count += 1
-            logger.info("Refunded payment %s (%d cents)", payment.id, payment.amount)
+            logger.info("Canceled payment %s (%d cents)", payment.id, payment.amount)
         else:
             payment.status = "failed"
             failed_refunds.append(str(payment.id))
-            logger.error("Failed to refund payment %s", payment.id)
+            logger.error("Failed to cancel payment %s", payment.id)
 
     await db.commit()
 
     return RefundResult(
-        trip_id=trip_id,
-        total_refunded=total_refunded,
-        payments_refunded=refunded_count,
-        failed_refunds=failed_refunds
+        pool_id=pool_id,
+        amount_refunded=total_refunded,
+        status="success" if not failed_refunds else "partial_failure"
     )
+
+async def cancel_single_authorization(db: AsyncSession, pool_id: uuid.UUID, member_id: uuid.UUID) -> bool:
+    """
+    Cancel a single user's pre-authorization.
+    Called when a user 'Withdraws' during the Vibe Check Window.
+    """
+    logger.info(f"Canceling authorization for member {member_id} in pool {pool_id}")
+    
+    result = await db.execute(
+        select(Payment)
+        .where(Payment.pool_id == pool_id)
+        .where(Payment.member_id == member_id)
+        .where(Payment.status == "authorized")
+    )
+    payment = result.scalar_one_or_none()
+    
+    if not payment:
+        logger.warning(f"No authorized payment found for member {member_id}")
+        return False
+        
+    success = False
+    if payment.gateway == "stripe":
+        success = await stripe_gateway.refund_payment(payment.gateway_payment_id)
+    elif payment.gateway == "razorpay":
+        success = await razorpay_gateway.refund_order(payment.gateway_payment_id)
+        
+    if success:
+        payment.status = "refunded"
+        payment.refunded_at = datetime.utcnow()
+        await db.commit()
+        logger.info(f"Successfully canceled authorization for payment {payment.id}")
+        return True
+        
+    logger.error(f"Failed to cancel authorization for payment {payment.id}")
+    return False
+
+import stripe
+from maci_core.config import settings
+
+async def execute_vendor_payout(db: AsyncSession, pool_id: uuid.UUID, vendor_stripe_account_id: str) -> bool:
+    """
+    Transfers the captured Escrow funds to the Vendor's connected Stripe account.
+    This completes the final leg of the Escrow journey.
+    """
+    logger.info(f"Executing vendor payout for pool {pool_id} to {vendor_stripe_account_id}")
+    
+    # Calculate the total captured amount for this pool
+    result = await db.execute(
+        select(Payment)
+        .where(Payment.pool_id == pool_id)
+        .where(Payment.status == "captured")
+    )
+    captured_payments = result.scalars().all()
+    
+    if not captured_payments:
+        logger.warning(f"No captured payments found for pool {pool_id} to payout.")
+        return False
+        
+    total_amount_cents = sum(p.amount for p in captured_payments)
+    
+    # --- BUSINESS MODEL: 5% Platform Fee ---
+    PLATFORM_FEE_PERCENTAGE = 0.05
+    platform_fee_cents = int(total_amount_cents * PLATFORM_FEE_PERCENTAGE)
+    payout_amount_cents = total_amount_cents - platform_fee_cents
+    
+    logger.info(f"Pool {pool_id} Revenue: {platform_fee_cents} cents. Paying Vendor: {payout_amount_cents} cents.")
+    
+    # Execute the Stripe Transfer to the connected account
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        transfer = stripe.Transfer.create(
+            amount=payout_amount_cents,
+            currency="usd",
+            destination=vendor_stripe_account_id,
+            description=f"Slice Escrow Payout for Pool {pool_id}"
+        )
+        logger.info(f"Successfully transferred {payout_amount_cents} cents to {vendor_stripe_account_id}. Transfer ID: {transfer.id}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to execute Stripe Transfer: {e}")
+        return False
