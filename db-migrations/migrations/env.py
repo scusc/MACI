@@ -1,7 +1,8 @@
 """
-Alembic env.py — configured for async SQLAlchemy with MACI models.
+Alembic env.py — configured for CI/CD Pipeline Executions.
 """
 
+import os
 import asyncio
 from logging.config import fileConfig
 
@@ -10,33 +11,26 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.config import settings
-from app.database import Base
-
-# Import ALL models so Alembic can detect them
-from app.models import (  # noqa: F401
-    Organization,
-    Trip,
-    Traveler,
-    Cluster,
-    NegotiationRound,
-    FlightProposal,
-    ConsensusResult,
-    TravelerItinerary,
-)
-
 # Alembic Config object
 config = context.config
 
-# Override the sqlalchemy.url with our settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# In CI/CD, we pass the DATABASE_URL as an environment variable
+db_url = os.environ.get("DATABASE_URL")
+if db_url:
+    # Alembic requires postgresql+asyncpg for async engines
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    config.set_main_option("sqlalchemy.url", db_url)
 
 # Setup logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# MetaData for autogenerate
-target_metadata = Base.metadata
+# We do not need target_metadata for applying migrations (upgrade head)
+# It is only needed for autogenerating new migrations.
+target_metadata = None
 
 
 def run_migrations_offline() -> None:

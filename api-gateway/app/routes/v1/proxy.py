@@ -20,8 +20,13 @@ async def proxy_payments(request: Request, path: str):
 
 @router.api_route("/auth/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def proxy_auth(request: Request, path: str):
-    """Proxy auth requests to group-service."""
-    return await proxy_request(request, settings.group_service_url)
+    """Proxy auth and KYC requests to auth-service."""
+    return await proxy_request(request, settings.auth_service_url)
+
+@router.api_route("/assets/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def proxy_assets(request: Request, path: str):
+    """Proxy assets and webhooks to asset-service."""
+    return await proxy_request(request, settings.asset_service_url)
 
 @router.api_route("/organizer/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def proxy_organizer(request: Request, path: str):

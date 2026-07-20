@@ -20,13 +20,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Run Tests (Pytest)
         run: |
-          pip install -r maci-core/requirements.txt
-          pip install pytest pytest-asyncio
-          pytest
+          pip install ./maci-core
+          pip install -r group-service/requirements.txt
+          pip install pytest pytest-asyncio httpx
+          cd group-service
+          PYTHONPATH=. pytest tests
 
       - name: Log in to Azure
         uses: azure/login@v1
@@ -62,6 +64,26 @@ jobs:
         run: |
           docker build --build-arg SERVICE_NAME=payment-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }} -f Dockerfile .
           docker push ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }}
+          
+      - name: Build and Push Backend (Group Service)
+        run: |
+          docker build --build-arg SERVICE_NAME=group-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:${{ github.sha }}
+          
+      - name: Build and Push Backend (API Gateway)
+        run: |
+          docker build --build-arg SERVICE_NAME=api-gateway -t ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:${{ github.sha }}
+
+      - name: Build and Push Backend (Trip Service)
+        run: |
+          docker build --build-arg SERVICE_NAME=trip-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/trip-service:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/trip-service:${{ github.sha }}
+
+      - name: Build and Push Backend (Notification Service)
+        run: |
+          docker build --build-arg SERVICE_NAME=notification-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/notification-service:${{ github.sha }} -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/notification-service:${{ github.sha }}
 
       - name: Build and Push Frontend
         run: |
@@ -79,12 +101,14 @@ jobs:
         uses: Azure/k8s-deploy@v4
         with:
           manifests: |
-            k8s/auth-service.yaml
-            k8s/asset-service.yaml
-            k8s/payment-service.yaml
+            k8s/rally-platform.yaml
             k8s/frontend.yaml
           images: |
             ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:${{ github.sha }}
             ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:${{ github.sha }}
             ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }}
+            ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:${{ github.sha }}
+            ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:${{ github.sha }}
+            ${{ env.REGISTRY_NAME }}.azurecr.io/trip-service:${{ github.sha }}
+            ${{ env.REGISTRY_NAME }}.azurecr.io/notification-service:${{ github.sha }}
             ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}

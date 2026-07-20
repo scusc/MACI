@@ -1,12 +1,12 @@
 import pytest
 import uuid
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from app.main import app
 
 @pytest.mark.asyncio
 async def test_organizer_branding():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         organizer_id = str(uuid.uuid4()) # In reality this would exist in the test DB
         
         # Test creating branding (will fail 404 because organizer doesn't exist in mock DB, but route exists)
@@ -22,7 +22,7 @@ async def test_organizer_branding():
 
 @pytest.mark.asyncio
 async def test_bulk_invite():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         trip_id = str(uuid.uuid4())
         
         response = await ac.post(

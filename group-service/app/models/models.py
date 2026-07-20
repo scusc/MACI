@@ -32,26 +32,26 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
-    organized_trips = relationship("Trip", back_populates="organizer")
-    memberships = relationship("TripMember", back_populates="user")
-    brand_config = relationship("BrandConfig", back_populates="organizer", uselist=False, cascade="all, delete-orphan")
+    swarm_peers = relationship("SwarmPeer", back_populates="user")
+    trust_graph = relationship("TrustGraph", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 
-class BrandConfig(Base):
-    __tablename__ = "rally_brand_configs"
-
-    organizer_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id", ondelete="CASCADE"), primary_key=True)
-    primary_color = Column(String(7), nullable=False, default="#000000")
-    logo_url = Column(String(1000))
-    company_name = Column(String(100), nullable=False)
+class TrustGraph(Base):
+    __tablename__ = "rally_trust_graphs"
+    
+    user_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id", ondelete="CASCADE"), primary_key=True)
+    verified_domain = Column(String(255))
+    instagram_handle = Column(String(100))
+    linkedin_id = Column(String(100))
+    trust_score = Column(Integer, default=0)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
+    
     # Relationships
-    organizer = relationship("User", back_populates="brand_config")
+    user = relationship("User", back_populates="trust_graph")
 
 
-class Trip(Base):
-    __tablename__ = "rally_trips"
+class Swarm(Base):
+    __tablename__ = "rally_swarms"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String(200), nullable=False)
@@ -65,31 +65,29 @@ class Trip(Base):
     estimated_cost_per_person = Column(Integer)  # cents/paise
     commitment_deadline = Column(DateTime(timezone=True))
     invite_code = Column(String(20), unique=True, nullable=False, index=True)
-    organizer_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     __table_args__ = (
-        CheckConstraint("status IN ('draft', 'collecting', 'active', 'completed', 'cancelled')", name="chk_trip_status"),
+        CheckConstraint("status IN ('draft', 'collecting', 'active', 'completed', 'cancelled')", name="chk_swarm_status"),
         CheckConstraint("threshold_pct >= 50 AND threshold_pct <= 100", name="chk_threshold"),
     )
 
     # Relationships
-    organizer = relationship("User", back_populates="organized_trips")
-    members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
-    payments = relationship("Payment", back_populates="trip")
-    price_snapshots = relationship("PriceSnapshot", back_populates="trip", cascade="all, delete-orphan")
+    peers = relationship("SwarmPeer", back_populates="swarm", cascade="all, delete-orphan")
+    payments = relationship("Payment", back_populates="swarm")
+    price_snapshots = relationship("PriceSnapshot", back_populates="swarm", cascade="all, delete-orphan")
 
 
-class TripMember(Base):
-    __tablename__ = "rally_trip_members"
+class SwarmPeer(Base):
+    __tablename__ = "rally_swarm_peers"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    trip_id = Column(UUID(as_uuid=True), ForeignKey("rally_trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    swarm_id = Column(UUID(as_uuid=True), ForeignKey("rally_swarms.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id"), index=True)
     email = Column(String(255), nullable=False)
     display_name = Column(String(100))
-    role = Column(String(20), nullable=False, default="member")
+    role = Column(String(20), nullable=False, default="peer")
     status = Column(String(20), nullable=False, default="invited", index=True)
     share_amount = Column(Integer)     # cents/paise
     platform_fee = Column(Integer)     # cents/paise
@@ -101,23 +99,23 @@ class TripMember(Base):
     declined_at = Column(DateTime(timezone=True))
 
     __table_args__ = (
-        UniqueConstraint("trip_id", "email", name="uq_trip_member_email"),
-        CheckConstraint("role IN ('organizer', 'member')", name="chk_member_role"),
-        CheckConstraint("status IN ('invited', 'viewed', 'committed', 'paid', 'declined')", name="chk_member_status"),
+        UniqueConstraint("swarm_id", "email", name="uq_swarm_peer_email"),
+        CheckConstraint("role IN ('peer')", name="chk_peer_role"),
+        CheckConstraint("status IN ('invited', 'viewed', 'committed', 'paid', 'declined')", name="chk_peer_status"),
     )
 
     # Relationships
-    trip = relationship("Trip", back_populates="members")
-    user = relationship("User", back_populates="memberships")
-    payments = relationship("Payment", back_populates="member")
+    swarm = relationship("Swarm", back_populates="peers")
+    user = relationship("User", back_populates="swarm_peers")
+    payments = relationship("Payment", back_populates="peer")
 
 
 class Payment(Base):
     __tablename__ = "rally_payments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    trip_id = Column(UUID(as_uuid=True), ForeignKey("rally_trips.id"), nullable=False, index=True)
-    member_id = Column(UUID(as_uuid=True), ForeignKey("rally_trip_members.id"), nullable=False, index=True)
+    swarm_id = Column(UUID(as_uuid=True), ForeignKey("rally_swarms.id"), nullable=False, index=True)
+    peer_id = Column(UUID(as_uuid=True), ForeignKey("rally_swarm_peers.id"), nullable=False, index=True)
     amount = Column(Integer, nullable=False)
     platform_fee = Column(Integer, nullable=False, default=0)
     currency = Column(String(3), nullable=False, default="USD")
@@ -137,18 +135,18 @@ class Payment(Base):
     )
 
     # Relationships
-    trip = relationship("Trip", back_populates="payments")
-    member = relationship("TripMember", back_populates="payments")
+    swarm = relationship("Swarm", back_populates="payments")
+    peer = relationship("SwarmPeer", back_populates="payments")
 
 
 class PriceSnapshot(Base):
     __tablename__ = "rally_price_snapshots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    trip_id = Column(UUID(as_uuid=True), ForeignKey("rally_trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    swarm_id = Column(UUID(as_uuid=True), ForeignKey("rally_swarms.id", ondelete="CASCADE"), nullable=False, index=True)
     origin_airport = Column(String(3), nullable=False)
     estimated_price = Column(Integer, nullable=False)  # cents
     snapshot_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     # Relationships
-    trip = relationship("Trip", back_populates="price_snapshots")
+    swarm = relationship("Swarm", back_populates="price_snapshots")
