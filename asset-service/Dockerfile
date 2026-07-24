@@ -3,7 +3,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY maci-core ./maci-core
-RUN pip install --no-cache-dir uvicorn httpx ./maci-core
+COPY asset-service/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir uvicorn httpx ./maci-core -r requirements.txt
 
 COPY asset-service/app ./app
 
