@@ -9,7 +9,7 @@ WORKDIR /app
 COPY maci-core /app/maci-core
 COPY ${SERVICE_NAME}/app /app/app
 
-RUN pip install --no-cache-dir uvicorn /app/maci-core
+RUN pip install --no-cache-dir uvicorn httpx /app/maci-core
 
 EXPOSE 8000
 
