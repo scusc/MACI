@@ -123,6 +123,40 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
 
 # ── Trip CRUD ──────────────────────────────────────────────────────────────────
 
+@router.get("", response_model=List[TripResponse])
+async def list_trips(
+    destination: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all trips in collecting or active state."""
+    stmt = select(Trip).options(selectinload(Trip.members)).order_by(Trip.created_at.desc())
+    if destination:
+        stmt = stmt.where(Trip.destination.ilike(f"%{destination}%"))
+    
+    result = await db.execute(stmt)
+    trips = result.scalars().all()
+    
+    responses = []
+    for trip in trips:
+        progress = await get_commitment_progress(db, trip)
+        responses.append(_build_trip_response(trip, progress))
+    return responses
+
+@router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_trip(
+    trip_id: uuid.UUID,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a trip (Organizer only)."""
+    trip = await _load_trip(db, trip_id)
+    if str(trip.organizer_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="Only the organizer can delete this trip")
+    
+    await db.delete(trip)
+    await db.commit()
+    return None
+
 @router.post("", response_model=TripResponse, status_code=status.HTTP_201_CREATED)
 async def create_trip(
     body: TripCreate,

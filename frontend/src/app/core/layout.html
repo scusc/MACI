@@ -1,15 +1,37 @@
 <div class="layout-wrapper">
   <header class="minimal-header">
     <div class="header-content">
-      <div class="logo">RALLY <span>PRIVACY NETWORK</span></div>
+      <div class="logo-area" routerLink="/feed" style="cursor: pointer;">
+        <div class="logo">RALLY <span>TRAVEL NETWORK</span></div>
+      </div>
+      
       <nav class="nav-links">
-        <a routerLink="/feed">Feed</a>
-        <a routerLink="/quiz">AI Calibration Quiz</a>
-        <a routerLink="/skills">Skill Swap</a>
-        <a routerLink="/meetups">Micro-Meetups</a>
-        <a routerLink="/subscription" class="passport-link">Trust Passport 🛡️</a>
-        <a routerLink="/pools">My Pools</a>
+        <a routerLink="/feed" routerLinkActive="active">Feed</a>
+        <a routerLink="/quiz" routerLinkActive="active">AI Calibration Quiz</a>
+        <a routerLink="/skills" routerLinkActive="active">Skill Swap</a>
+        <a routerLink="/meetups" routerLinkActive="active">Micro-Meetups</a>
+        <a routerLink="/subscription" routerLinkActive="active" class="passport-link">Trust Passport 🛡️</a>
+        <a routerLink="/pools" routerLinkActive="active">My Pools</a>
       </nav>
+
+      <div class="user-actions">
+        <ng-container *ngIf="currentUser() as user; else unauth">
+          <div class="user-badge" routerLink="/settings" title="View Profile & Settings">
+            <span class="karma-pill">✨ {{ user.karma_score || 100 }} pts</span>
+            <span class="kyc-badge" [class.verified]="user.kyc_status === 'verified'">
+              {{ user.kyc_status === 'verified' ? '🛡️ Verified' : '👤 Unverified' }}
+            </span>
+            <span class="user-name">{{ user.first_name || 'Traveler' }}</span>
+          </div>
+          <a routerLink="/settings" class="btn-icon" title="Account Settings">⚙️</a>
+          <button class="btn-logout" (click)="logout()" title="Sign Out">Logout</button>
+        </ng-container>
+        
+        <ng-template #unauth>
+          <a routerLink="/login" class="btn-secondary">Log In</a>
+          <a routerLink="/register" class="btn-primary">Sign Up</a>
+        </ng-template>
+      </div>
     </div>
   </header>
 

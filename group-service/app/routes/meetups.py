@@ -10,6 +10,15 @@ from maci_core.config import settings
 
 router = APIRouter(prefix="/meetups", tags=["Micro-Commitments"])
 
+@router.get("/all")
+async def list_all_meetups(db: AsyncSession = Depends(get_db)):
+    """Lists all open micro-commitment meetups."""
+    from sqlalchemy import select
+    stmt = select(Meetup).order_by(Meetup.created_at.desc())
+    result = await db.execute(stmt)
+    meetups = result.scalars().all()
+    return [{"id": str(m.id), "title": m.title, "description": m.description, "latitude": m.latitude, "longitude": m.longitude, "start_time": m.start_time, "escrow_amount_cents": m.escrow_amount_cents, "check_in_pin": m.check_in_pin} for m in meetups]
+
 @router.post("/", response_model=MeetupResponse)
 async def create_meetup(
     meetup: MeetupCreate,

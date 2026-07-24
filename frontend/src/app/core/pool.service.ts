@@ -1,24 +1,34 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
 import { environment } from '../../environments/environment';
 
-export interface Pool {
+export interface TripMember {
   id: string;
-  asset_id: string;
-  host_id: string;
+  email: string;
+  display_name?: string;
+  role: 'organizer' | 'member';
+  status: 'invited' | 'viewed' | 'committed' | 'paid' | 'declined';
+  share_amount: number;
+}
+
+export interface Trip {
+  id: string;
+  title: string;
+  destination: string;
   start_date: string;
   end_date: string;
-  funding_deadline: string;
-  status: 'funding' | 'locked' | 'confirmed' | 'cancelled';
-  require_vibe_check: boolean;
-  
-  // Synthesized fields for the UI
-  assetTitle?: string;
-  slicesCommitted?: number;
-  totalSlices?: number;
-  costPerSlice?: number;
+  description: string;
+  status: 'draft' | 'collecting' | 'active' | 'cancelled';
+  currency: string;
+  threshold_pct: number;
+  estimated_cost_per_person: number;
+  commitment_deadline: string;
+  organizer_id: string;
+  invite_code: string;
+  members: TripMember[];
+  media_url?: string;
+  weather_temp?: number;
 }
 
 @Injectable({
@@ -26,17 +36,33 @@ export interface Pool {
 })
 export class PoolService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/pools`; 
+  private apiUrl = `${environment.apiUrl}/trips`;
 
-  getMyPools(): Observable<Pool[]> {
-    return this.http.get<Pool[]>(`${this.apiUrl}/feed`);
+  getTrips(destination?: string): Observable<Trip[]> {
+    let params = new HttpParams();
+    if (destination) {
+      params = params.set('destination', destination);
+    }
+    return this.http.get<Trip[]>(this.apiUrl, { params });
   }
 
-  joinPool(poolId: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/${poolId}/join`, { expected_amount: 1000.0 }); // mocked amount, could be dynamic
+  getTrip(tripId: string): Observable<Trip> {
+    return this.http.get<Trip>(`${this.apiUrl}/${tripId}`);
   }
 
-  cancelCommitment(poolId: string): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/payments/escrow/pool/${poolId}/withdraw`, {});
+  createTrip(tripData: Partial<Trip>): Observable<Trip> {
+    return this.http.post<Trip>(this.apiUrl, tripData);
+  }
+
+  updateTrip(tripId: string, updateData: Partial<Trip>): Observable<Trip> {
+    return this.http.patch<Trip>(`${this.apiUrl}/${tripId}`, updateData);
+  }
+
+  deleteTrip(tripId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${tripId}`);
+  }
+
+  joinTrip(tripId: string, memberId: string): Observable<Trip> {
+    return this.http.post<Trip>(`${this.apiUrl}/${tripId}/members/${memberId}/commit`, {});
   }
 }

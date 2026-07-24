@@ -12,9 +12,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 from maci_core.schemas.asset import AssetCreate
 
-logger = logging.getLogger(__name__)
-
-SERPAPI_KEY = os.getenv("SERPAPI_KEY", "PLACEHOLDER_KEY")
+SERPAPI_KEY = os.getenv("SERPAPI_API_KEY") or os.getenv("SERPAPI_KEY", "PLACEHOLDER_KEY")
 SERPAPI_BASE_URL = "https://serpapi.com/search.json"
 
 async def search_inventory(

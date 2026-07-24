@@ -1,89 +1,190 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AssetService } from '../core/asset.service';
-
-interface Asset {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  location: string;
-  total_price: number;
-  media_url: string;
-}
-
-const FALLBACK_ASSETS: Asset[] = [
-  {
-    id: 'a1',
-    title: 'Luxury Cliffside Villa & Co-Living Pod',
-    description: 'Shielded Pod: Introvert-friendly pacing, shared infinity pool & high-speed Starlink for digital nomads.',
-    category: 'luxury',
-    location: 'Uluwatu, Bali, Indonesia',
-    total_price: 3500,
-    media_url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000'
-  },
-  {
-    id: 'a2',
-    title: 'Eco-Lodge Jungle Retreat',
-    description: 'Shielded Pod: Yoga mornings, organic chef, & local language interpreter included in pod skill swap.',
-    category: 'wellness',
-    location: 'Ubud, Bali, Indonesia',
-    total_price: 2200,
-    media_url: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1000'
-  }
-];
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { PoolService, Trip } from '../core/pool.service';
+import { TravelService, TravelSearchResult, FlightOption, HotelOption } from '../core/travel.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-swipe-feed',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './swipe-feed.html',
   styleUrl: './swipe-feed.scss',
 })
 export class SwipeFeed implements OnInit {
-  private assetService = inject(AssetService);
-  
-  assets = signal<Asset[]>(FALLBACK_ASSETS);
+  private poolService = inject(PoolService);
+  private travelService = inject(TravelService);
+  public authService = inject(AuthService);
+  private router = inject(Router);
+
+  trips = signal<Trip[]>([]);
   currentIndex = signal(0);
   isLoading = signal(false);
 
+  // Filter signal
+  searchDestination = signal('');
+
+  // Modal signals
+  showCreateModal = signal(false);
+  isSearchingTravel = signal(false);
+  travelSearchResult = signal<TravelSearchResult | null>(null);
+
+  // New post form fields
+  postTitle = signal('');
+  postOrigin = signal('NYC');
+  postDestination = signal('Bali');
+  postStartDate = signal('2026-09-01');
+  postEndDate = signal('2026-09-07');
+  postDescription = signal('');
+  postCost = signal(1200);
+
+  selectedFlight = signal<FlightOption | null>(null);
+  selectedHotel = signal<HotelOption | null>(null);
+
   ngOnInit() {
-    const checkIn = new Date();
-    checkIn.setDate(checkIn.getDate() + 30);
-    const checkOut = new Date();
-    checkOut.setDate(checkOut.getDate() + 35);
-    
-    this.assetService.searchInventory(
-      'Villas in Bali', 
-      checkIn.toISOString().split('T')[0], 
-      checkOut.toISOString().split('T')[0], 
-      'luxury'
-    ).subscribe({
+    this.loadFeed();
+  }
+
+  loadFeed() {
+    this.isLoading.set(true);
+    this.poolService.getTrips(this.searchDestination()).subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          const mappedAssets = data.map(a => ({
-            ...a,
-            media_url: a.media_urls && a.media_urls.length > 0 ? a.media_urls[0] : FALLBACK_ASSETS[0].media_url
-          }));
-          this.assets.set(mappedAssets);
-        }
+        this.trips.set(data || []);
+        this.isLoading.set(false);
       },
       error: () => {
-        // Fallback data remains active
+        this.isLoading.set(false);
       }
     });
   }
 
-  currentAsset = computed(() => {
-    const assetsList = this.assets();
-    const index = this.currentIndex();
-    return index < assetsList.length ? assetsList[index] : null;
+  onSearch() {
+    this.loadFeed();
+  }
+
+  currentTrip = computed(() => {
+    const list = this.trips();
+    const idx = this.currentIndex();
+    return idx < list.length ? list[idx] : null;
   });
 
-  isEmpty = computed(() => this.currentAsset() === null);
+  isEmpty = computed(() => this.currentTrip() === null);
 
-  swipe(direction: 'left' | 'right') {
-    if (this.isEmpty()) return;
-    this.currentIndex.update(i => i + 1);
+  nextCard() {
+    if (!this.isEmpty()) {
+      this.currentIndex.update(i => i + 1);
+    }
+  }
+
+  prevCard() {
+    if (this.currentIndex() > 0) {
+      this.currentIndex.update(i => i - 1);
+    }
+  }
+
+  openCreateModal() {
+    if (!this.authService.getToken()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.showCreateModal.set(true);
+  }
+
+  closeCreateModal() {
+    this.showCreateModal.set(false);
+    this.travelSearchResult.set(null);
+  }
+
+  performLiveTravelSearch() {
+    if (!this.postOrigin() || !this.postDestination()) return;
+    this.isSearchingTravel.set(true);
+
+    this.travelService.searchTravel(
+      this.postOrigin(),
+      this.postDestination(),
+      this.postStartDate(),
+      this.postEndDate(),
+      1
+    ).subscribe({
+      next: (res) => {
+        this.travelSearchResult.set(res);
+        this.isSearchingTravel.set(false);
+        if (res.flights && res.flights.length > 0) {
+          this.selectedFlight.set(res.flights[0]);
+        }
+        if (res.hotels && res.hotels.length > 0) {
+          this.selectedHotel.set(res.hotels[0]);
+          this.postCost.set(res.flights[0].price_usd + res.hotels[0].price_per_night_usd * 5);
+        }
+      },
+      error: () => {
+        this.isSearchingTravel.set(false);
+      }
+    });
+  }
+
+  submitNewPost() {
+    if (!this.postTitle() || !this.postDestination()) return;
+
+    const payload: Partial<Trip> = {
+      title: this.postTitle(),
+      destination: this.postDestination(),
+      start_date: new Date(this.postStartDate()).toISOString(),
+      end_date: new Date(this.postEndDate()).toISOString(),
+      description: this.postDescription() || `Group trip to ${this.postDestination()} with real API travel option.`,
+      estimated_cost_per_person: this.postCost(),
+      threshold_pct: 60,
+      currency: 'USD'
+    };
+
+    this.poolService.createTrip(payload).subscribe({
+      next: (newTrip) => {
+        this.closeCreateModal();
+        this.loadFeed();
+        alert('🎉 Post & Pool published successfully with real live travel data!');
+      },
+      error: (err) => {
+        alert('Failed to publish post: ' + (err.error?.detail || 'Identity verification required to create pools.'));
+      }
+    });
+  }
+
+  deletePost(tripId: string) {
+    if (confirm('Are you sure you want to delete this travel pool post?')) {
+      this.poolService.deleteTrip(tripId).subscribe({
+        next: () => {
+          this.loadFeed();
+          alert('Post deleted.');
+        },
+        error: (err) => {
+          alert(err.error?.detail || 'Could not delete post.');
+        }
+      });
+    }
+  }
+
+  joinPool(trip: Trip) {
+    if (!this.authService.getToken()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    const currentUser = this.authService.currentUser();
+    if (!currentUser) return;
+
+    this.poolService.joinTrip(trip.id, currentUser.id).subscribe({
+      next: () => {
+        alert('✅ You have joined this pool!');
+        this.loadFeed();
+      },
+      error: (err) => {
+        alert(err.error?.detail || 'Identity verification (KYC) required to commit to pools.');
+      }
+    });
+  }
+
+  openChat(tripId: string) {
+    this.router.navigate(['/chat', tripId]);
   }
 }

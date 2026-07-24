@@ -1,12 +1,17 @@
 <div class="chat-container">
   <div class="chat-header">
     <div class="header-titles">
-      <h2>Rally Co-Traveler Chat</h2>
-      <p>Shielded Profiles Active &bull; Mutual Handshake Required for Identity Unmasking</p>
+      <h2>Rally Group & Pool Chat</h2>
+      <p>Pool ID: {{ poolId() }} &bull; Real-Time WebSockets Active</p>
     </div>
-    <div class="connection-status">
-      <span class="status-dot" [class.connected]="chatService.isConnected()"></span>
-      {{ chatService.isConnected() ? 'Live' : 'Shielded Demo Mode' }}
+    <div class="header-actions">
+      <button class="btn-mediator" (click)="openMediatorModal()" title="De-escalate travel disputes with AI">
+        🤖 Call AI Mediator
+      </button>
+      <div class="connection-status">
+        <span class="status-dot" [class.connected]="chatService.isConnected()"></span>
+        {{ chatService.isConnected() ? 'Live Connected' : 'Connecting...' }}
+      </div>
     </div>
   </div>
 
@@ -15,8 +20,8 @@
     <div class="banner-info">
       <span class="lock-icon">{{ isIdentityRevealed() ? '🔓' : '🔒' }}</span>
       <div>
-        <strong>{{ isIdentityRevealed() ? 'Identities Revealed!' : 'Shielded Identity Mode' }}</strong>
-        <p>{{ isIdentityRevealed() ? 'Mutual double-opt-in complete. Direct contact details unlocked.' : 'Your real name and phone are hidden behind your nomad avatar.' }}</p>
+        <strong>{{ isIdentityRevealed() ? 'Identities Unmasked!' : 'Shielded Identity Mode' }}</strong>
+        <p>{{ isIdentityRevealed() ? 'Mutual double-opt-in complete. Verified real names and contact details unlocked.' : 'Your real identity is hidden behind your nomad karma avatar.' }}</p>
       </div>
     </div>
     <button 
@@ -29,28 +34,24 @@
   </div>
 
   <div class="chat-messages" #scrollContainer>
-    <!-- Welcome Message -->
+    <!-- Welcome System Message -->
     <div class="message system-message">
       <div class="message-content">
-        Welcome to your Rally group chat! The Concierge Swarm is listening to help coordinate details.
+        Welcome to your live Rally group pool chat! Messages are broadcasted in real time via WebSockets and backed by PostgreSQL database storage.
       </div>
     </div>
 
-    <!-- Live Messages from WebSocket -->
+    <!-- Live Messages -->
     <div 
       class="message" 
       *ngFor="let msg of chatService.messages()" 
-      [class.sent]="msg.sender === 'User'"
-      [class.ai-message]="msg.sender === 'Slice AI'">
+      [class.sent]="msg.sender === 'You'"
+      [class.ai-message]="msg.is_ai || msg.sender === '🤖 Rally AI Mediator'">
       
-      <div class="message-avatar" *ngIf="msg.sender === 'Slice AI'">
-        🤖
-      </div>
-
       <div class="message-body">
-        <div class="message-sender" *ngIf="msg.sender !== 'User'">
-          {{ isIdentityRevealed() ? 'Alex Rivers (Verified)' : 'Nomad_94A2F1' }}
-          <span class="karma-badge">⭐ 4.9 Karma</span>
+        <div class="message-sender" *ngIf="msg.sender !== 'You'">
+          {{ msg.sender }}
+          <span class="karma-badge">✨ Traveler</span>
         </div>
         <div class="message-content">{{ msg.text }}</div>
         <div class="message-time" *ngIf="msg.timestamp">{{ msg.timestamp | date:'shortTime' }}</div>
@@ -63,7 +64,7 @@
       [ngModel]="newMessage()"
       (ngModelChange)="newMessage.set($event)"
       (keydown)="handleKeyDown($event)"
-      placeholder="Type a message or ask the AI Concierge..." 
+      placeholder="Type a message to your co-travelers or hit Enter..." 
       class="chat-textarea" 
       rows="1"></textarea>
       
@@ -73,5 +74,36 @@
       [disabled]="!newMessage().trim()">
       Send
     </button>
+  </div>
+
+  <!-- AI Mediator Modal -->
+  <div *ngIf="showMediatorModal()" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>🤖 Rally In-App AI Mediator</h2>
+        <button class="btn-close" (click)="closeMediatorModal()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <p>Experiencing an itinerary disagreement or expense dispute? Describe the issue and let Gemini AI mediate an objective compromise.</p>
+
+        <div class="form-group">
+          <label>Describe the Dispute</label>
+          <textarea rows="3" [ngModel]="disputeText()" (ngModelChange)="disputeText.set($event)" placeholder="e.g. Half the group wants a $200 luxury catamaran tour, but others prefer hiking budget options..."></textarea>
+        </div>
+
+        <div *ngIf="mediatorResolution()" class="resolution-box">
+          <h4>💡 AI Resolution Proposal:</h4>
+          <p>{{ mediatorResolution() }}</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeMediatorModal()">Close</button>
+        <button class="btn-primary" (click)="submitAIMediation()" [disabled]="isMediating()">
+          {{ isMediating() ? 'Mediating...' : 'Generate Mediation Proposal' }}
+        </button>
+      </div>
+    </div>
   </div>
 </div>

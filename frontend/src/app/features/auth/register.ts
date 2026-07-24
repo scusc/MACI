@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth.service';
 
 @Component({
   selector: 'app-register',
@@ -11,25 +12,46 @@ import { Router, RouterLink } from '@angular/router';
   styleUrl: './register.scss',
 })
 export class Register {
-  registerForm: FormGroup;
-  isSubmitting = signal(false);
+  private fb = inject(FormBuilder);
+  private router = inject(Router);
+  private authService = inject(AuthService);
 
-  constructor(private fb: FormBuilder, private router: Router) {
-    this.registerForm = this.fb.group({
-      firstName: ['', Validators.required],
-      lastName: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]]
-    });
-  }
+  registerForm: FormGroup = this.fb.group({
+    firstName: ['', Validators.required],
+    lastName: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(8)]]
+  });
+
+  isSubmitting = signal(false);
+  errorMessage = signal<string | null>(null);
 
   onSubmit() {
-    if (this.registerForm.valid) {
-      this.isSubmitting.set(true);
-      setTimeout(() => {
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.errorMessage.set(null);
+
+    const val = this.registerForm.value;
+    const payload = {
+      first_name: val.firstName,
+      last_name: val.lastName,
+      email: val.email,
+      password: val.password
+    };
+
+    this.authService.register(payload).subscribe({
+      next: () => {
         this.isSubmitting.set(false);
         this.router.navigate(['/quiz']);
-      }, 1000);
-    }
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        this.errorMessage.set(err.error?.detail || 'Registration failed. Email may already be registered.');
+      }
+    });
   }
 }

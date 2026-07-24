@@ -1,12 +1,13 @@
 import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [CommonModule, ReactiveFormsModule],
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
@@ -15,7 +16,6 @@ export class Login {
   private router = inject(Router);
   private authService = inject(AuthService);
 
-  // Using signals for component state
   isSubmitting = signal(false);
   errorMessage = signal<string | null>(null);
 
@@ -43,6 +43,26 @@ export class Login {
       error: (err) => {
         this.isSubmitting.set(false);
         this.errorMessage.set(err.error?.detail || 'Invalid credentials. Please try again.');
+      }
+    });
+  }
+
+  handleGoogleOAuth() {
+    const simulatedGoogleJwt = 'simulated_google_oauth_token_' + Date.now();
+    this.authService.loginWithOAuth('google', simulatedGoogleJwt).subscribe({
+      next: () => this.router.navigate(['/feed']),
+      error: () => {
+        alert('Google OAuth: Enter GOOGLE_CLIENT_ID in Azure portal environment variables.');
+      }
+    });
+  }
+
+  handleAppleOAuth() {
+    const simulatedAppleJwt = 'simulated_apple_oauth_token_' + Date.now();
+    this.authService.loginWithOAuth('apple', simulatedAppleJwt).subscribe({
+      next: () => this.router.navigate(['/feed']),
+      error: () => {
+        alert('Apple Sign-In: Configure APPLE_CLIENT_ID in Azure portal environment variables.');
       }
     });
   }

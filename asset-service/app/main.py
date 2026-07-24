@@ -18,6 +18,7 @@ from app.api.insurance import router as insurance_router
 from app.api.vendor import router as vendor_router
 from app.api.users import router as users_router
 from app.api.matching import router as matching_router
+from app.api.travel import router as travel_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,6 +58,7 @@ app.include_router(insurance_router, prefix=settings.API_PREFIX)
 app.include_router(vendor_router, prefix=settings.API_PREFIX)
 app.include_router(users_router, prefix=settings.API_PREFIX)
 app.include_router(matching_router, prefix=settings.API_PREFIX)
+app.include_router(travel_router, prefix=settings.API_PREFIX)
 app.include_router(chat_router) # WebSockets do not usually take the api prefix
 
 

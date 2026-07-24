@@ -1,61 +1,158 @@
-<div class="feed-container">
-  <div class="feed-header">
-    <h2>Discovery Feed</h2>
-    <p>Find your next shared experience.</p>
+<div class="feed-wrapper">
+  <!-- Feed Toolbar -->
+  <div class="feed-toolbar">
+    <div class="search-box">
+      <input 
+        type="text" 
+        [ngModel]="searchDestination()" 
+        (ngModelChange)="searchDestination.set($event)" 
+        placeholder="🔍 Search destinations (e.g. Bali, Tokyo, Paris)..." 
+        (keyup.enter)="onSearch()"
+      />
+      <button (click)="onSearch()" class="btn-search">Search</button>
+    </div>
+
+    <button (click)="openCreateModal()" class="btn-create-post">
+      ✨ + Create Post & Travel Pool
+    </button>
   </div>
 
-  <div class="swipe-deck" *ngIf="!isLoading(); else loadingState">
-    <div *ngIf="!isEmpty(); else emptyState">
-      <!-- Current Card -->
-      <div class="swipe-card card" *ngIf="currentAsset() as asset">
-      <div class="card-image" [style.background-image]="'url(' + asset.media_url + ')'">
-        <div class="card-badge">{{ asset.category | uppercase }}</div>
-      </div>
-      
-      <div class="card-content">
-        <div class="card-header">
-          <h3 class="asset-title">{{ asset.title }}</h3>
-          <span class="asset-price">${{ asset.total_price }} / pool</span>
+  <!-- Cards Feed Area -->
+  <div class="feed-container">
+    <div *ngIf="isLoading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Fetching real travel pools & live data...</p>
+    </div>
+
+    <div *ngIf="!isLoading() && isEmpty()" class="empty-state">
+      <h3>No travel pools found matching "{{ searchDestination() }}"</h3>
+      <p>Be the first traveler to create a post with real live travel search!</p>
+      <button (click)="openCreateModal()" class="btn-primary">Create Travel Pool</button>
+    </div>
+
+    <div *ngIf="!isLoading() && currentTrip() as trip" class="swipe-card">
+      <div class="card-media">
+        <img [src]="trip.media_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000'" alt="Travel Image" />
+        <div class="destination-badge">{{ trip.destination }}</div>
+        <div class="status-tag" [class.active]="trip.status === 'collecting'">
+          {{ trip.status | uppercase }}
         </div>
-        
-        <p class="asset-location">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-          {{ asset.location }}
-        </p>
-        
-        <p class="asset-description">{{ asset.description }}</p>
       </div>
-      
-      <div class="card-actions">
-        <button class="action-btn nope-btn" (click)="swipe('left')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-        <button class="action-btn like-btn" (click)="swipe('right')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        </button>
+
+      <div class="card-content">
+        <div class="header-row">
+          <h2>{{ trip.title }}</h2>
+          <div class="price-tag">${{ trip.estimated_cost_per_person }} <span>/ person</span></div>
+        </div>
+
+        <p class="description">{{ trip.description }}</p>
+
+        <div class="trip-meta">
+          <div class="meta-item">📅 {{ trip.start_date | date:'mediumDate' }} - {{ trip.end_date | date:'mediumDate' }}</div>
+          <div class="meta-item">👥 {{ trip.members.length || 1 }} Members Joined</div>
+          <div class="meta-item">🎟️ Code: {{ trip.invite_code }}</div>
+        </div>
+
+        <div class="members-preview">
+          <span class="label">Members:</span>
+          <span *ngFor="let m of trip.members" class="member-chip" [class.organizer]="m.role === 'organizer'">
+            {{ m.display_name || m.email.split('@')[0] }} ({{ m.role }})
+          </span>
+        </div>
+
+        <div class="card-actions">
+          <button class="btn-prev" (click)="prevCard()" [disabled]="currentIndex() === 0">◀ Prev</button>
+          
+          <button class="btn-join" (click)="joinPool(trip)">
+            ⚡ Join & Commit Fund (${{ trip.estimated_cost_per_person }})
+          </button>
+          
+          <button class="btn-chat" (click)="openChat(trip.id)">
+            💬 Live Group Chat
+          </button>
+
+          <button *ngIf="authService.currentUser()?.id === trip.organizer_id" class="btn-delete" (click)="deletePost(trip.id)">
+            🗑️ Delete
+          </button>
+
+          <button class="btn-next" (click)="nextCard()" [disabled]="currentIndex() >= trips().length - 1">Next ▶</button>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Create Post Modal with Live Travel API Search -->
+  <div *ngIf="showCreateModal()" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>✨ Create Post & Live Travel Pool</h2>
+        <button class="btn-close" (click)="closeCreateModal()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="live-search-section">
+          <h3>1. Real-Time Travel API Search</h3>
+          <div class="search-form-row">
+            <div class="form-group">
+              <label>Origin</label>
+              <input type="text" [ngModel]="postOrigin()" (ngModelChange)="postOrigin.set($event)" placeholder="e.g. NYC, JFK" />
+            </div>
+            <div class="form-group">
+              <label>Destination</label>
+              <input type="text" [ngModel]="postDestination()" (ngModelChange)="postDestination.set($event)" placeholder="e.g. Bali, Tokyo, Paris" />
+            </div>
+            <div class="form-group">
+              <label>Start Date</label>
+              <input type="date" [ngModel]="postStartDate()" (ngModelChange)="postStartDate.set($event)" />
+            </div>
+            <div class="form-group">
+              <label>End Date</label>
+              <input type="date" [ngModel]="postEndDate()" (ngModelChange)="postEndDate.set($event)" />
+            </div>
+          </div>
+          <button (click)="performLiveTravelSearch()" class="btn-api-search" [disabled]="isSearchingTravel()">
+            {{ isSearchingTravel() ? 'Querying Live APIs...' : '🔍 Search Live Flights & Hotels' }}
+          </button>
+
+          <!-- Search Results Preview -->
+          <div *ngIf="travelSearchResult() as res" class="search-results-preview">
+            <div *ngIf="res.weather" class="weather-box">
+              🌤️ <strong>Live Weather in {{ res.destination }}:</strong> {{ res.weather.temp_celsius }}°C, {{ res.weather.condition }} (Wind: {{ res.weather.wind_speed_kmh }} km/h)
+            </div>
+
+            <div class="flights-list">
+              <h4>Available Live Flight Options:</h4>
+              <div *ngFor="let f of res.flights" class="flight-item" [class.selected]="selectedFlight()?.id === f.id" (click)="selectedFlight.set(f)">
+                <div><strong>{{ f.airline }} ({{ f.flight_number }})</strong>: {{ f.departure_airport }} ➔ {{ f.arrival_airport }} ({{ f.duration }})</div>
+                <div class="flight-price">${{ f.price_usd }} USD</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="post-details-section">
+          <h3>2. Post & Pool Details</h3>
+          <div class="form-group">
+            <label>Post Title</label>
+            <input type="text" [ngModel]="postTitle()" (ngModelChange)="postTitle.set($event)" placeholder="e.g. 7-Day Luxury Nomad Co-Living in Uluwatu" />
+          </div>
+
+          <div class="form-group">
+            <label>Trip Description</label>
+            <textarea rows="3" [ngModel]="postDescription()" (ngModelChange)="postDescription.set($event)" placeholder="Describe the vibe, activities, and who should join..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Estimated Share Cost Per Person ($USD)</label>
+            <input type="number" [ngModel]="postCost()" (ngModelChange)="postCost.set($event)" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeCreateModal()">Cancel</button>
+        <button class="btn-primary" (click)="submitNewPost()">Publish Post & Pool</button>
+      </div>
+    </div>
   </div>
-
-  <ng-template #emptyState>
-    <div class="empty-state">
-      <div class="empty-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-      </div>
-      <h3>You've caught up!</h3>
-      <p>There are no more assets matching your criteria. Check back later.</p>
-    </div>
-  </ng-template>
-
-  <ng-template #loadingState>
-    <div class="empty-state">
-      <div class="empty-icon loading-spinner">
-        <!-- Minimalist spinner -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      </div>
-      <h3>Finding Experiences...</h3>
-      <p>Querying the live SerpAPI inventory.</p>
-    </div>
-  </ng-template>
 </div>

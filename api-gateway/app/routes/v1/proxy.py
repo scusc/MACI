@@ -73,6 +73,11 @@ async def proxy_matching(request: Request, path: str):
     """Proxy psychometric AI matching requests to asset-service."""
     return await proxy_request(request, settings.asset_service_url)
 
+@router.api_route("/travel/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def proxy_travel(request: Request, path: str):
+    """Proxy real travel API requests to asset-service."""
+    return await proxy_request(request, settings.asset_service_url)
+
 @router.api_route("/plan", methods=["POST"])
 async def proxy_plan(request: Request):
     """Proxy AI planning requests to trip-service."""

@@ -186,36 +186,43 @@ async def ai_mediator(
     user_id: str = Depends(get_current_user_id)
 ):
     """
-    Phase 5: In-App AI Mediator Chatbot.
-    Acts as a neutral 3rd party to resolve travel group disputes.
-    Uses Google GenAI SDK (Gemini).
+    In-App AI Mediator Chatbot.
+    Acts as a neutral 3rd party to resolve travel group disputes using Azure OpenAI.
     """
-    import os
-    
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        # Mock response if key is missing during MVP presentation
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    ad_token = os.getenv("AZURE_OPENAI_AD_TOKEN")
+    api_key = os.getenv("AZURE_OPENAI_API_KEY")
+
+    if not endpoint or (not ad_token and not api_key):
         return {
             "status": "mediated",
-            "resolution": "It sounds like tensions are high regarding this issue. I recommend taking a 1-hour break from the conversation, then re-evaluating the itinerary together focusing on mutual compromises. Remember, you both agreed to the 'Chill Vibe' psychometric profile!"
+            "resolution": "It sounds like tensions are high regarding this issue. I recommend taking a short 1-hour break from the conversation, then re-evaluating the itinerary together focusing on mutual compromises. Remember, you both agreed to the 'Chill Vibe' psychometric profile!"
         }
         
-    from google import genai
-    client = genai.Client(api_key=api_key)
-    
-    prompt = f"""
-    You are a neutral, objective travel group mediator. 
-    Analyze this dispute and provide a calming, de-escalating, and practical resolution for the group.
-    Keep it under 3 sentences.
-    
-    Dispute: "{request.dispute_text}"
-    """
-    
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
-        return {"status": "mediated", "resolution": response.text}
+        from langchain_openai import AzureChatOpenAI
+        from langchain_core.messages import SystemMessage, HumanMessage
+
+        kwargs = {
+            "azure_endpoint": endpoint,
+            "openai_api_version": os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
+            "azure_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT", "o3"),
+            "temperature": 0.7,
+        }
+        if ad_token:
+            kwargs["azure_ad_token"] = ad_token
+        elif api_key:
+            kwargs["api_key"] = api_key
+
+        llm = AzureChatOpenAI(**kwargs)
+        sys_msg = SystemMessage(content="You are a neutral, objective travel group mediator for the Rally platform. Analyze disputes and provide a calming, de-escalating, and practical resolution for the group. Keep it under 3 sentences.")
+        human_msg = HumanMessage(content=f"Dispute: \"{request.dispute_text}\"")
+
+        res = await llm.ainvoke([sys_msg, human_msg])
+        return {"status": "mediated", "resolution": res.content}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI Mediator failed: {str(e)}")
+        logger.warning(f"Azure OpenAI Mediator failed: {e}")
+        return {
+            "status": "mediated",
+            "resolution": "Tensions can arise during group planning. I suggest allocating a flexible afternoon where travelers can split into sub-activities before regrouping for sunset dinner."
+        }

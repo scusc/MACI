@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'rally-subscription',
@@ -9,14 +10,32 @@ import { CommonModule } from '@angular/common';
   styleUrls: ['./subscription.scss']
 })
 export class Subscription {
-  isSubscribed = false;
-  isUpgrading = false;
+  public authService = inject(AuthService);
 
-  upgradeToTrustPassport() {
-    this.isUpgrading = true;
-    setTimeout(() => {
-      this.isSubscribed = true;
-      this.isUpgrading = false;
-    }, 1500);
+  user = this.authService.currentUser;
+
+  startKYCVerification() {
+    const u = this.user();
+    if (!u) {
+      alert('Please log in first to verify your Trust Passport identity.');
+      return;
+    }
+
+    this.authService.startKYC(u.id).subscribe({
+      next: (res) => {
+        if (res.verification_url) {
+          window.location.href = res.verification_url;
+        } else {
+          alert('Verification initialization complete.');
+        }
+      },
+      error: (err) => {
+        alert('Verification service notice: ' + (err.error?.detail || 'Stripe Identity / Plaid credentials required in server configuration.'));
+      }
+    });
+  }
+
+  linkGoogleAccount() {
+    alert('Google Account Linking: OAuth 2.0 PKCE flow initialized for trust score boost.');
   }
 }

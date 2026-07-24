@@ -27,7 +27,40 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+@router.get("/skills/all", response_model=List[PodSkillResponse])
+async def list_all_skills(
+    db: AsyncSession = Depends(get_db)
+):
+    """Lists all skills offered across all travel pools."""
+    stmt = select(PodSkill).order_by(PodSkill.created_at.desc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
+class StandaloneSkillCreate(BaseModel):
+    category: str
+    title: str
+    description: str
+    estimated_value_cents: int
+
+@router.post("/skills/standalone", response_model=PodSkillResponse, status_code=status.HTTP_201_CREATED)
+async def add_standalone_skill(
+    body: StandaloneSkillCreate,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """Registers a global skill offering independent of a specific trip."""
+    skill = PodSkill(
+        trip_id=None,
+        user_id=uuid.UUID(user_id),
+        category=body.category,
+        title=body.title,
+        description=body.description,
+        estimated_value_cents=body.estimated_value_cents
+    )
+    db.add(skill)
+    await db.commit()
+    await db.refresh(skill)
+    return skill
 @router.post("/{trip_id}/skills", response_model=PodSkillResponse, status_code=status.HTTP_201_CREATED)
 async def add_pod_skill(
     trip_id: uuid.UUID,

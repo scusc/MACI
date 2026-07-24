@@ -8,13 +8,13 @@
 .minimal-header {
   background-color: #1e293b;
   border-bottom: 1px solid #334155;
-  padding: 1rem 0;
+  padding: 0.85rem 0;
   position: sticky;
   top: 0;
   z-index: 100;
   
   .header-content {
-    max-width: 1200px;
+    max-width: 1300px;
     margin: 0 auto;
     padding: 0 1.5rem;
     display: flex;
@@ -45,17 +45,20 @@
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.25rem;
 
   a {
     text-decoration: none;
     color: #94a3b8;
     font-size: 0.875rem;
     font-weight: 600;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 6px;
 
-    &:hover {
+    &:hover, &.active {
       color: #f8fafc;
+      background: rgba(255, 255, 255, 0.05);
     }
   }
 
@@ -68,6 +71,112 @@
     &:hover {
       background: rgba(168, 85, 247, 0.3);
       color: #e9d5ff;
+    }
+  }
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #0f172a;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid #334155;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: #1e293b;
+    }
+
+    .karma-pill {
+      font-size: 0.75rem;
+      color: #f59e0b;
+      font-weight: 700;
+    }
+
+    .kyc-badge {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #334155;
+      color: #94a3b8;
+
+      &.verified {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+      }
+    }
+
+    .user-name {
+      font-size: 0.8rem;
+      color: #f8fafc;
+      font-weight: 600;
+    }
+  }
+
+  .btn-icon {
+    font-size: 1.1rem;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+
+    &:hover {
+      background: #334155;
+    }
+  }
+
+  .btn-logout {
+    background: transparent;
+    border: 1px solid #475569;
+    color: #94a3b8;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+  }
+
+  .btn-primary {
+    background: #38bdf8;
+    color: #0f172a;
+    padding: 6px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: #7dd3fc;
+    }
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: #94a3b8;
+    padding: 6px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #f8fafc;
     }
   }
 }

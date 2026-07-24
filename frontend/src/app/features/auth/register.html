@@ -4,6 +4,10 @@
     <h1 class="auth-title">Create Shielded Account</h1>
     <p class="auth-subtitle">Join Rally. Real names remain hidden until mutual handshake.</p>
 
+    <div *ngIf="errorMessage()" class="alert error" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.85rem;">
+      {{ errorMessage() }}
+    </div>
+
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form">
       <div class="form-row">
         <div class="form-group">

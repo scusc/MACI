@@ -4,6 +4,7 @@ Auth API Routes.
 Handles user registration, login, token refresh, and Stripe Identity webhooks.
 """
 
+from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,6 +74,75 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
         return payload.get("sub")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    bio: Optional[str] = None
+    origin_airport: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+@router.get("/me")
+async def get_me(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch current user profile."""
+    from sqlalchemy import select
+    from maci_core.models.user import User
+    import uuid
+    stmt = select(User).where(User.id == uuid.UUID(user_id))
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "first_name": user.first_name or "",
+        "last_name": user.last_name or "",
+        "bio": getattr(user, 'bio', ''),
+        "origin_airport": getattr(user, 'origin_airport', ''),
+        "avatar_url": getattr(user, 'avatar_url', ''),
+        "is_verified": user.kyc_status == "verified",
+        "kyc_status": user.kyc_status,
+        "karma_score": user.karma_score
+    }
+
+@router.put("/me")
+async def update_me(
+    body: UserUpdate,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update current user profile details."""
+    from sqlalchemy import select
+    from maci_core.models.user import User
+    import uuid
+    stmt = select(User).where(User.id == uuid.UUID(user_id))
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.first_name is not None: user.first_name = body.first_name
+    if body.last_name is not None: user.last_name = body.last_name
+    if body.bio is not None: setattr(user, 'bio', body.bio)
+    if body.origin_airport is not None: setattr(user, 'origin_airport', body.origin_airport)
+    if body.avatar_url is not None: setattr(user, 'avatar_url', body.avatar_url)
+
+    await db.commit()
+    await db.refresh(user)
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "first_name": user.first_name or "",
+        "last_name": user.last_name or "",
+        "bio": getattr(user, 'bio', ''),
+        "origin_airport": getattr(user, 'origin_airport', ''),
+        "avatar_url": getattr(user, 'avatar_url', ''),
+        "is_verified": user.kyc_status == "verified",
+        "kyc_status": user.kyc_status,
+        "karma_score": user.karma_score
+    }
 
 @router.post("/link-account")
 async def link_account(

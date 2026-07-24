@@ -1,38 +1,37 @@
 <div class="sub-container">
   <div class="sub-header">
-    <span class="badge">Verified Security Ecosystem</span>
-    <h2>Upgrade to Rally Trust Passport</h2>
-    <p>Bypass scammers, unlock Zero-Knowledge privacy vaults, and get priority AI psychometric matching.</p>
+    <span class="badge">🛡️ Verified Security & Identity Vault</span>
+    <h2>Rally Trust Passport 🛡️</h2>
+    <p>Bypass scammers, unlock Zero-Knowledge privacy vaults, and build your portable traveler reputation.</p>
   </div>
 
-  <div class="pricing-cards">
-    <!-- Free Tier -->
-    <div class="card free-card" [class.active]="!isSubscribed">
-      <h3>Basic Nomad</h3>
-      <div class="price">$0 <span>/ month</span></div>
-      <ul>
-        <li>✓ Basic Swiping & Pool Browsing</li>
-        <li>✓ Local Micro-Commitments Escrow</li>
-        <li>✗ Standard Matching Algorithm</li>
-        <li>✗ Public Profile (No ZK Shielding)</li>
-      </ul>
-      <button class="btn-tier" disabled>Current Tier</button>
+  <!-- Trust Level Breakdown -->
+  <div class="trust-levels-grid">
+    <!-- Level 1: Email Verified -->
+    <div class="trust-card" [class.achieved]="user()?.is_verified">
+      <div class="level-badge">LEVEL 1</div>
+      <h3>Email Verification</h3>
+      <p>Basic traveler identity verified via token email confirmation.</p>
+      <div class="status-indicator">
+        {{ user() ? '✅ Achieved' : '🔒 Pending Login' }}
+      </div>
     </div>
 
-    <!-- Trust Passport Tier -->
-    <div class="card pro-card" [class.active]="isSubscribed">
-      <div class="card-tag">RECOMMENDED FOR CO-TRAVELERS</div>
-      <h3>Verified Trust Passport</h3>
-      <div class="price">$9.99 <span>/ month</span></div>
-      <ul>
-        <li>✓ Verified Gold Shield Badge</li>
-        <li>✓ Full Zero-Knowledge Privacy Vault</li>
-        <li>✓ Priority Psychometric AI Matching (84.6% match accuracy)</li>
-        <li>✓ Skill-Swap Barter Economy Access</li>
-        <li>✓ Companion Cancellation Protection Policy ($500 deficit cover)</li>
-      </ul>
-      <button class="btn-upgrade" (click)="upgradeToTrustPassport()" [disabled]="isSubscribed || isUpgrading">
-        {{ isSubscribed ? 'Active Subscription ✓' : (isUpgrading ? 'Redirecting to Stripe...' : 'Upgrade Now — $9.99/mo') }}
+    <!-- Level 2: Linked Social Accounts -->
+    <div class="trust-card" [class.achieved]="user()?.karma_score && user()!.karma_score >= 100">
+      <div class="level-badge">LEVEL 2</div>
+      <h3>Trust Portability</h3>
+      <p>Link Google / LinkedIn accounts to boost your Karma reputation score.</p>
+      <button class="btn-link" (click)="linkGoogleAccount()">Link Google Account</button>
+    </div>
+
+    <!-- Level 3: Stripe / Plaid Identity -->
+    <div class="trust-card pro-card" [class.achieved]="user()?.kyc_status === 'verified'">
+      <div class="level-badge gold">LEVEL 3 (HIGHEST)</div>
+      <h3>Stripe & Plaid Identity</h3>
+      <p>Full government ID check & bank account verification via Stripe Identity & Plaid API.</p>
+      <button class="btn-upgrade" (click)="startKYCVerification()">
+        {{ user()?.kyc_status === 'verified' ? '🛡️ Level 3 Verified' : 'Verify Identity via Stripe/Plaid' }}
       </button>
     </div>
   </div>
