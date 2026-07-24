@@ -34,6 +34,8 @@ spec:
           value: "http://group-service:8000"
         - name: PAYMENT_SERVICE_URL
           value: "http://payment-service:8000"
+        - name: JWT_SECRET_KEY
+          value: "maci-super-secret-production-key-2026"
 ---
 apiVersion: v1
 kind: Service
@@ -72,6 +74,13 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+        - name: REDIS_URL
+          value: "redis://:BfTqmWnZfl0IimiaA1FykTlpDZvOWjBSJAzCaGWkxdY=@redis-maci-dev-123.redis.cache.windows.net:6380"
+        - name: JWT_SECRET_KEY
+          value: "maci-super-secret-production-key-2026"
 ---
 apiVersion: v1
 kind: Service
@@ -109,6 +118,11 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+        - name: REDIS_URL
+          value: "redis://:BfTqmWnZfl0IimiaA1FykTlpDZvOWjBSJAzCaGWkxdY=@redis-maci-dev-123.redis.cache.windows.net:6380"
 ---
 apiVersion: v1
 kind: Service
@@ -146,6 +160,11 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+        - name: SERVICE_BUS_CONNECTION_STRING
+          value: "Endpoint=sb://sb-maci-dev-123.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=0W5h0NLRDlKICcGdUJrtAnpDuQmNSlXOD+ASbGVqkZ8="
 ---
 apiVersion: v1
 kind: Service
@@ -183,6 +202,11 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+        - name: SERVICE_BUS_CONNECTION_STRING
+          value: "Endpoint=sb://sb-maci-dev-123.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=0W5h0NLRDlKICcGdUJrtAnpDuQmNSlXOD+ASbGVqkZ8="
 ---
 apiVersion: v1
 kind: Service
