@@ -1,5 +1,5 @@
 export const environment = {
-  production: false,
-  apiUrl: 'http://localhost:8000/api/v1',
-  wsUrl: 'ws://localhost:8002'
+  production: true,
+  apiUrl: 'http://rally-travel-api.eastus.cloudapp.azure.com/api/v1',
+  wsUrl: 'ws://rally-travel-api.eastus.cloudapp.azure.com'
 };
