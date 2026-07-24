@@ -19,6 +19,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+            - containerPort: 443
           resources:
             requests:
               cpu: "100m"
@@ -35,7 +36,11 @@ metadata:
 spec:
   type: LoadBalancer # Public entrypoint for the Angular web app
   ports:
-    - port: 80
+    - name: http
+      port: 80
       targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
   selector:
     app: frontend
