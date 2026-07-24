@@ -1,7 +1,27 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Real-Time AI Swarm Chat', () => {
-  test('should render chat UI and allow message submission', async ({ page }) => {
+  test('should render chat UI and allow message submission', async ({ page, request }) => {
+    const uniqueEmail = `test_${Date.now()}@slice.com`;
+    // Register the user via API first so login succeeds
+    await request.post('http://localhost:8000/api/v1/auth/register', {
+      data: {
+        email: uniqueEmail,
+        password: 'SecurePassword123!',
+        first_name: 'Test',
+        last_name: 'User'
+      }
+    });
+
+    // First, login to get a valid token
+    await page.goto('/login');
+    await page.fill('input[type="email"]', uniqueEmail);
+    await page.fill('input[type="password"]', 'SecurePassword123!');
+    await page.click('button[type="submit"]');
+    
+    // Wait for redirect to feed to ensure token is stored
+    await page.waitForURL('/feed');
+
     // Navigate to a demo pool chat
     await page.goto('/chat/demo-pool-123');
     

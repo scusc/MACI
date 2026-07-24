@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+import { environment } from '../../environments/environment';
+
 export interface Asset {
   id: string;
   title: string;
@@ -20,19 +22,17 @@ export interface Asset {
 })
 export class AssetService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:8002/api/v1/assets'; 
+  private apiUrl = `${environment.apiUrl}/assets`; 
 
   searchInventory(query: string, checkIn: string, checkOut: string, category: string): Observable<Asset[]> {
-    let params = new HttpParams()
-      .set('query', query)
-      .set('check_in', checkIn)
-      .set('check_out', checkOut);
-      
-    if (category) {
-      params = params.set('category', category);
-    }
-
-    return this.http.get<Asset[]>(`${this.apiUrl}/search`, { params });
+    const payload = {
+      query,
+      check_in: checkIn,
+      check_out: checkOut,
+      category,
+      adults: 4
+    };
+    return this.http.post<Asset[]>(`${this.apiUrl}/import-from-serpapi`, payload);
   }
 
   getAsset(id: string): Observable<Asset> {

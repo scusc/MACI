@@ -24,12 +24,16 @@ spec:
         image: acrmacidev123.azurecr.io/api-gateway:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
+        - containerPort: 8000
         env:
+        - name: AUTH_SERVICE_URL
+          value: "http://auth-service:8000"
+        - name: ASSET_SERVICE_URL
+          value: "http://asset-service:8000"
         - name: GROUP_SERVICE_URL
-          value: "http://group-service"
+          value: "http://group-service:8000"
         - name: PAYMENT_SERVICE_URL
-          value: "http://payment-service"
+          value: "http://payment-service:8000"
 ---
 apiVersion: v1
 kind: Service
@@ -37,13 +41,87 @@ metadata:
   name: api-gateway
   namespace: rally
 spec:
-  type: LoadBalancer # Exposes the gateway to the internet
+  type: LoadBalancer # Public API gateway entrypoint
   selector:
     app: api-gateway
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 80
+    targetPort: 8000
+
+---
+# ── Auth Service ─────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: rally
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: acrmacidev123.azurecr.io/auth-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: rally
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+
+---
+# ── Asset Service ────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asset-service
+  namespace: rally
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: asset-service
+  template:
+    metadata:
+      labels:
+        app: asset-service
+    spec:
+      containers:
+      - name: asset-service
+        image: acrmacidev123.azurecr.io/asset-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asset-service
+  namespace: rally
+spec:
+  selector:
+    app: asset-service
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
 
 ---
 # ── Group Service ────────────────────────────────────────────────────────────
@@ -67,16 +145,7 @@ spec:
         image: acrmacidev123.azurecr.io/group-service:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
-        env:
-        - name: TRIP_SERVICE_URL
-          value: "http://trip-service"
-        # Use Kubernetes Secret for database URL (populated from Key Vault in real setup)
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: rally-db-secret
-              key: DATABASE_URL
+        - containerPort: 8000
 ---
 apiVersion: v1
 kind: Service
@@ -88,8 +157,8 @@ spec:
     app: group-service
   ports:
   - protocol: TCP
-    port: 80
-    targetPort: 80
+    port: 8000
+    targetPort: 8000
 
 ---
 # ── Payment Service ──────────────────────────────────────────────────────────
@@ -113,15 +182,7 @@ spec:
         image: acrmacidev123.azurecr.io/payment-service:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
-        env:
-        - name: GROUP_SERVICE_URL
-          value: "http://group-service"
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: rally-db-secret
-              key: DATABASE_URL
+        - containerPort: 8000
 ---
 apiVersion: v1
 kind: Service
@@ -133,79 +194,5 @@ spec:
     app: payment-service
   ports:
   - protocol: TCP
-    port: 80
-    targetPort: 80
-
----
-# ── Notification Service ─────────────────────────────────────────────────────
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: notification-service
-  namespace: rally
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: notification-service
-  template:
-    metadata:
-      labels:
-        app: notification-service
-    spec:
-      containers:
-      - name: notification-service
-        image: acrmacidev123.azurecr.io/notification-service:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: notification-service
-  namespace: rally
-spec:
-  selector:
-    app: notification-service
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
-
----
-# ── Trip Service ─────────────────────────────────────────────────────────────
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: trip-service
-  namespace: rally
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: trip-service
-  template:
-    metadata:
-      labels:
-        app: trip-service
-    spec:
-      containers:
-      - name: trip-service
-        image: acrmacidev123.azurecr.io/trip-service:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: trip-service
-  namespace: rally
-spec:
-  selector:
-    app: trip-service
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
+    port: 8000
+    targetPort: 8000

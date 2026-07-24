@@ -34,9 +34,9 @@
 
       <div class="progress-container">
         <div class="progress-bar">
-          <div class="progress-fill" [style.width.%]="(pool.slicesCommitted / pool.totalSlices) * 100"></div>
+          <div class="progress-fill" [style.width.%]="((pool.slicesCommitted || 0) / (pool.totalSlices || 1)) * 100"></div>
         </div>
-        <span class="progress-text">{{ (pool.slicesCommitted / pool.totalSlices) * 100 | number:'1.0-0' }}% Funded</span>
+        <span class="progress-text">{{ ((pool.slicesCommitted || 0) / (pool.totalSlices || 1)) * 100 | number:'1.0-0' }}% Funded</span>
       </div>
 
       <div class="pool-actions">

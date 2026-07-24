@@ -26,6 +26,10 @@ class PoolMember(Base):
     # Number of slices this user committed to (usually 1)
     slices_committed: Mapped[int] = mapped_column(Integer, default=1)
     
+    # Skill Swapping
+    offered_skill: Mapped[str] = mapped_column(String(255), nullable=True)
+    discount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    
     # Status: 'pending_approval', 'approved', 'paid', 'rejected', 'withdrawn'
     status: Mapped[str] = mapped_column(String(50), default="pending_approval")
 

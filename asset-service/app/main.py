@@ -13,6 +13,11 @@ from maci_core.core.exceptions import MACIError
 from app.api.assets import router as assets_router
 from app.api.pools import router as pools_router
 from app.api.chat import router as chat_router
+from app.api.trips import router as trips_router
+from app.api.insurance import router as insurance_router
+from app.api.vendor import router as vendor_router
+from app.api.users import router as users_router
+from app.api.matching import router as matching_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,7 +28,7 @@ async def lifespan(app: FastAPI):
 from maci_core.observability import setup_observability
 
 app = FastAPI(
-    title="Slice Asset Service",
+    title="Rally Asset Service",
     lifespan=lifespan,
     docs_url="/docs",
 )
@@ -48,7 +53,12 @@ async def maci_error_handler(request, exc: MACIError):
 
 app.include_router(assets_router, prefix=settings.API_PREFIX)
 app.include_router(pools_router, prefix=settings.API_PREFIX)
+app.include_router(insurance_router, prefix=settings.API_PREFIX)
+app.include_router(vendor_router, prefix=settings.API_PREFIX)
+app.include_router(users_router, prefix=settings.API_PREFIX)
+app.include_router(matching_router, prefix=settings.API_PREFIX)
 app.include_router(chat_router) # WebSockets do not usually take the api prefix
+
 
 @app.get("/health")
 async def health():

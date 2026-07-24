@@ -13,7 +13,8 @@ from sqlalchemy import select
 
 from app.db import get_db
 from app.models.models import Payment
-from maci_core.models.pool import Pool, PoolMember
+from maci_core.models.pool import Pool
+from maci_core.models.pool_member import PoolMember
 from app.services import stripe_gateway, razorpay_gateway, escrow_manager
 from app.services.split_calculator import calculate_platform_fee
 

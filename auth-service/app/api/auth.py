@@ -13,12 +13,15 @@ from maci_core.schemas.auth import (
     LoginRequest,
     RefreshRequest,
     TokenResponse,
+    OAuthRequest,
+    LinkAccountRequest,
 )
 from maci_core.schemas.user import UserCreate
 from app.services import auth_service
+from fastapi import HTTPException
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
 
 @router.post("/register", response_model=AuthResponse, status_code=201)
 async def register(
@@ -28,7 +31,6 @@ async def register(
     """Register a new B2C user."""
     return await auth_service.register(db, request)
 
-
 @router.post("/login", response_model=AuthResponse)
 async def login(
     request: LoginRequest,
@@ -36,7 +38,6 @@ async def login(
 ):
     """Login with email and password. Returns JWT token pair and User data."""
     return await auth_service.login(db, request)
-
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
@@ -46,11 +47,23 @@ async def refresh(
     """Refresh an expired access token using a valid refresh token."""
     return await auth_service.refresh_tokens(db, request.refresh_token)
 
-# --- Trust & Escrow Finalization (Phase 5 & 6) ---
+@router.post("/oauth", response_model=AuthResponse)
+async def oauth_login(
+    request: OAuthRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Handle OAuth login/registration securely via provider JWT token."""
+    if request.provider not in ["google", "apple", "linkedin"]:
+        raise HTTPException(status_code=400, detail="Unsupported OAuth provider")
+        
+    return await auth_service.oauth_login_or_register(
+        db=db,
+        provider=request.provider,
+        provider_token=request.provider_token,
+    )
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from maci_core.core.security import verify_token
-from fastapi import HTTPException
 
 security = HTTPBearer()
 
@@ -60,6 +73,25 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
         return payload.get("sub")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+@router.post("/link-account")
+async def link_account(
+    request: LinkAccountRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trust Portability: Link LinkedIn or Google to boost Karma Score."""
+    if request.provider not in ["google", "apple", "linkedin"]:
+        raise HTTPException(status_code=400, detail="Unsupported OAuth provider")
+        
+    return await auth_service.link_oauth_account(
+        db=db,
+        user_id=user_id,
+        provider=request.provider,
+        provider_token=request.provider_token,
+    )
+
+# --- Trust & Escrow Finalization (Phase 5 & 6) ---
 
 @router.post("/kyc/start")
 async def start_kyc(
@@ -132,3 +164,84 @@ async def auth_stripe_webhook(request: Request, db: AsyncSession = Depends(get_d
                 await db.commit()
                 
     return {"status": "success"}
+
+class PlaidVerifyRequest(BaseModel):
+    public_token: str
+
+@router.post("/verify-identity")
+async def verify_identity(
+    request: PlaidVerifyRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Live Plaid Identity / Level 3 Trust verification.
+    Exchanges public token, fetches identity, sets user as verified and permanently boosts Karma Score.
+    """
+    from sqlalchemy import select
+    from maci_core.models.user import User
+    import uuid
+    import os
+    import plaid
+    from plaid.api import plaid_api
+    from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+    from plaid.model.identity_get_request import IdentityGetRequest
+    
+    stmt = select(User).where(User.id == uuid.UUID(user_id))
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if getattr(user, 'kyc_status', None) == "verified":
+        return {"status": "already_verified", "message": "Identity already verified"}
+        
+    plaid_client_id = os.getenv("PLAID_CLIENT_ID")
+    plaid_secret = os.getenv("PLAID_SECRET")
+    
+    if not plaid_client_id or not plaid_secret:
+        raise HTTPException(status_code=500, detail="Plaid API Keys are missing in environment.")
+        
+    configuration = plaid.Configuration(
+        host=plaid.Environment.Sandbox,
+        api_key={
+            'clientId': plaid_client_id,
+            'secret': plaid_secret,
+        }
+    )
+    api_client = plaid.ApiClient(configuration)
+    client = plaid_api.PlaidApi(api_client)
+    
+    try:
+        # 1. Exchange Public Token for Access Token
+        exchange_request = ItemPublicTokenExchangeRequest(public_token=request.public_token)
+        exchange_response = client.item_public_token_exchange(exchange_request)
+        access_token = exchange_response['access_token']
+        
+        # 2. Fetch Identity Data
+        identity_request = IdentityGetRequest(access_token=access_token)
+        identity_response = client.identity_get(identity_request)
+        
+        # 3. Basic verification check (ensure it matches the user name in a real system)
+        accounts = identity_response['accounts']
+        if not accounts or not accounts[0].get('owners'):
+            raise HTTPException(status_code=400, detail="No identity information found on linked account.")
+            
+        owner = accounts[0]['owners'][0]
+        logger.info(f"Plaid Identity Verified: {owner.get('names')}")
+        
+    except plaid.ApiException as e:
+        logger.error(f"Plaid API Error: {e}")
+        raise HTTPException(status_code=400, detail="Failed to verify identity with Plaid.")
+
+    # Set verified and boost Karma (Level 3 Trust)
+    user.kyc_status = "verified"
+    user.karma_score += 10.0
+    
+    await db.commit()
+    
+    return {
+        "status": "success",
+        "message": "Level 3 Trust unlocked. Identity verified via Plaid.",
+        "new_karma_score": user.karma_score
+    }

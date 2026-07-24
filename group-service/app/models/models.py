@@ -150,3 +150,44 @@ class PriceSnapshot(Base):
 
     # Relationships
     swarm = relationship("Swarm", back_populates="price_snapshots")
+
+class Trip(Base):
+    __tablename__ = "rally_trips"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String(200), nullable=False)
+    destination = Column(String(200), nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date)
+    description = Column(Text)
+    status = Column(String(20), nullable=False, default="draft", index=True)
+    currency = Column(String(3), nullable=False, default="USD")
+    threshold_pct = Column(Integer, nullable=False, default=80)
+    estimated_cost_per_person = Column(Integer)
+    commitment_deadline = Column(DateTime(timezone=True))
+    invite_code = Column(String(20), unique=True, nullable=False, index=True)
+    organizer_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id"), index=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
+
+
+class TripMember(Base):
+    __tablename__ = "rally_trip_members"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    trip_id = Column(UUID(as_uuid=True), ForeignKey("rally_trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id"), index=True)
+    email = Column(String(255), nullable=False)
+    display_name = Column(String(100))
+    role = Column(String(20), nullable=False, default="member")
+    status = Column(String(20), nullable=False, default="invited", index=True)
+    share_amount = Column(Integer)
+    platform_fee = Column(Integer)
+    origin_airport = Column(String(3))
+    committed_at = Column(DateTime(timezone=True))
+    paid_at = Column(DateTime(timezone=True))
+    declined_at = Column(DateTime(timezone=True))
+
+    trip = relationship("Trip", back_populates="members")

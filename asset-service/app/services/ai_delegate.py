@@ -56,15 +56,18 @@ def get_azure_openai_client() -> AzureChatOpenAI:
     """Creates an AzureChatOpenAI client using Entra ID authentication."""
     endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "https://mock-endpoint.openai.azure.com")
     api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+    ad_token = os.environ.get("AZURE_OPENAI_AD_TOKEN")
     
     kwargs = {
         "azure_endpoint": endpoint,
         "openai_api_version": "2024-12-01-preview",
         "azure_deployment": "o3",
-        "temperature": 0.7,
+        "temperature": 1,
     }
     
-    if api_key:
+    if ad_token:
+        kwargs["azure_ad_token"] = ad_token
+    elif api_key:
         kwargs["api_key"] = api_key
     else:
         # Fallback for local testing if no managed identity is set up
@@ -91,21 +94,21 @@ async def run_concierge_swarm(
     logistics_agent = create_react_agent(
         llm, 
         tools=[fetch_flight_options],
-        messages_modifier=SystemMessage(content=f"You are the Slice Logistics Agent for {destination} on {dates}. CRITICAL: If a specific user asks for a 'sub-plan' or a personal arrangement (e.g. they want a different flight than the group), you MUST generate a separate splinter itinerary addressed directly to them. Do not affect the main group's plan.")
+        prompt=SystemMessage(content=f"You are the Slice Logistics Agent for {destination} on {dates}. CRITICAL: If a specific user asks for a 'sub-plan' or a personal arrangement (e.g. they want a different flight than the group), you MUST generate a separate splinter itinerary addressed directly to them. Do not affect the main group's plan.")
     )
     
     # 2. Experience Agent (Events/Nightlife)
     experience_agent = create_react_agent(
         llm,
         tools=[fetch_local_events],
-        messages_modifier=SystemMessage(content=f"You are the Slice Experience Agent for {destination}. CRITICAL: If an individual user asks for a splinter plan (e.g., they want to go to a museum while the group goes to the beach), you MUST generate a distinct sub-itinerary scoped ONLY to that user. Address them directly.")
+        prompt=SystemMessage(content=f"You are the Slice Experience Agent for {destination}. CRITICAL: If an individual user asks for a splinter plan (e.g., they want to go to a museum while the group goes to the beach), you MUST generate a distinct sub-itinerary scoped ONLY to that user. Address them directly.")
     )
     
     # 3. Culinary Agent (Food/Dining)
     culinary_agent = create_react_agent(
         llm,
         tools=[fetch_local_restaurants],
-        messages_modifier=SystemMessage(content=f"You are the Slice Culinary Agent for {destination}. CRITICAL: If an individual user has a distinct dietary request that branches from the main group, generate a specific sub-reservation plan just for them.")
+        prompt=SystemMessage(content=f"You are the Slice Culinary Agent for {destination}. CRITICAL: If an individual user has a distinct dietary request that branches from the main group, generate a specific sub-reservation plan just for them.")
     )
     
     # Simple Orchestrator Logic: Look at the last message to decide which agent to trigger

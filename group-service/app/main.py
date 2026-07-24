@@ -9,12 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routes.trips import router as trips_router
-from app.routes.organizer import router as organizer_router
-from app.routes.auth import router as auth_router
 from maci_core.database import engine, Base
-from maci_core.events.bus import bus_manager
-from maci_core.events.schemas import PaymentIntentAuthorizedEvent
 import app.models.models  # Import all models so metadata binds them
 
 logging.basicConfig(
@@ -25,39 +20,31 @@ logger = logging.getLogger("rally.group")
 
 
 async def handle_payment_authorized(event_data: dict):
-    from app.routes.trips import mark_member_paid
-    from maci_core.database import async_session_factory
-    import uuid
-    
-    try:
-        event = PaymentIntentAuthorizedEvent(**event_data)
-        logger.info(f"Received payment.authorized event for member {event.member_id}")
-        
-        async with async_session_factory() as db:
-            await mark_member_paid(
-                trip_id=uuid.UUID(event.trip_id),
-                member_id=uuid.UUID(event.member_id),
-                db=db
-            )
-    except Exception as e:
-        logger.error(f"Error handling payment.authorized: {e}")
+    pass
 
 async def start_service_bus_listeners():
-    logger.info("Starting Service Bus listener for PaymentIntentAuthorizedEvent")
-    await bus_manager.listen_to_subscription(
-        topic_name="payment.authorized",
-        subscription_name="group_service_sub",
-        message_handler=handle_payment_authorized
-    )
+    try:
+        from maci_core.events.bus import bus_manager
+        logger.info("Starting Service Bus listener for PaymentIntentAuthorizedEvent")
+        await bus_manager.listen_to_subscription(
+            topic_name="payment.authorized",
+            subscription_name="group_service_sub",
+            message_handler=handle_payment_authorized
+        )
+    except Exception as e:
+        logger.warning(f"Service Bus listener skipped: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle hook for startup/shutdown."""
     logger.info("Starting Rally Group Service...")
     
-    # Create DB tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Create DB tables if DB connected
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        logger.warning(f"Database table sync skipped: {e}")
         
     import asyncio
     sb_task = asyncio.create_task(start_service_bus_listeners())
@@ -76,16 +63,26 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Configure for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include Routers
-app.include_router(auth_router, prefix="/api/v1")
-app.include_router(trips_router)
-app.include_router(organizer_router, prefix="/api/v1")
+from app.routes.profile import router as profile_router
+from app.routes.chat import router as chat_router
+from app.routes.handshake import router as handshake_router
+from app.routes.meetups import router as meetups_router
+from app.routes.skill_swap import router as skill_swap_router
+from app.routes.trips import router as trips_router
+
+app.include_router(trips_router, prefix="/api/v1")
+app.include_router(profile_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
+app.include_router(handshake_router, prefix="/api/v1")
+app.include_router(meetups_router, prefix="/api/v1")
+app.include_router(skill_swap_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["health"])

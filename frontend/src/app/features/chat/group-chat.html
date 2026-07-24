@@ -1,20 +1,38 @@
 <div class="chat-container">
   <div class="chat-header">
     <div class="header-titles">
-      <h2>Pool Chat</h2>
-      <p>Discuss details with the group & the AI Concierge Swarm.</p>
+      <h2>Rally Co-Traveler Chat</h2>
+      <p>Shielded Profiles Active &bull; Mutual Handshake Required for Identity Unmasking</p>
     </div>
     <div class="connection-status">
       <span class="status-dot" [class.connected]="chatService.isConnected()"></span>
-      {{ chatService.isConnected() ? 'Live' : 'Disconnected' }}
+      {{ chatService.isConnected() ? 'Live' : 'Shielded Demo Mode' }}
     </div>
+  </div>
+
+  <!-- ZK Privacy & Handshake Banner -->
+  <div class="handshake-banner" [class.revealed]="isIdentityRevealed()">
+    <div class="banner-info">
+      <span class="lock-icon">{{ isIdentityRevealed() ? '🔓' : '🔒' }}</span>
+      <div>
+        <strong>{{ isIdentityRevealed() ? 'Identities Revealed!' : 'Shielded Identity Mode' }}</strong>
+        <p>{{ isIdentityRevealed() ? 'Mutual double-opt-in complete. Direct contact details unlocked.' : 'Your real name and phone are hidden behind your nomad avatar.' }}</p>
+      </div>
+    </div>
+    <button 
+      class="btn-handshake" 
+      *ngIf="!isIdentityRevealed()"
+      (click)="voteToRevealIdentity()"
+      [disabled]="hasVotedReveal()">
+      {{ hasVotedReveal() ? 'Waiting for Peer Vote...' : 'Vote to Reveal Identity 🤝' }}
+    </button>
   </div>
 
   <div class="chat-messages" #scrollContainer>
     <!-- Welcome Message -->
     <div class="message system-message">
       <div class="message-content">
-        Welcome to the group chat! The Slice AI Concierge Swarm is listening and ready to assist with logistics, food, and experiences.
+        Welcome to your Rally group chat! The Concierge Swarm is listening to help coordinate details.
       </div>
     </div>
 
@@ -26,16 +44,13 @@
       [class.ai-message]="msg.sender === 'Slice AI'">
       
       <div class="message-avatar" *ngIf="msg.sender === 'Slice AI'">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+        🤖
       </div>
 
       <div class="message-body">
         <div class="message-sender" *ngIf="msg.sender !== 'User'">
-          {{ msg.sender }}
-          <span class="karma-badge" *ngIf="msg.sender !== 'Slice AI'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            4.9 <!-- Mock karma for demo -->
-          </span>
+          {{ isIdentityRevealed() ? 'Alex Rivers (Verified)' : 'Nomad_94A2F1' }}
+          <span class="karma-badge">⭐ 4.9 Karma</span>
         </div>
         <div class="message-content">{{ msg.text }}</div>
         <div class="message-time" *ngIf="msg.timestamp">{{ msg.timestamp | date:'shortTime' }}</div>
@@ -45,17 +60,18 @@
 
   <div class="chat-input-area">
     <textarea 
-      [(ngModel)]="newMessage" 
+      [ngModel]="newMessage()"
+      (ngModelChange)="newMessage.set($event)"
       (keydown)="handleKeyDown($event)"
-      placeholder="Type a message or ask the Concierge..." 
+      placeholder="Type a message or ask the AI Concierge..." 
       class="chat-textarea" 
       rows="1"></textarea>
       
     <button 
       class="btn-primary send-btn" 
       (click)="sendMessage()" 
-      [disabled]="!newMessage().trim() || !chatService.isConnected()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      [disabled]="!newMessage().trim()">
+      Send
     </button>
   </div>
 </div>

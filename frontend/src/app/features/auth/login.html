@@ -1,7 +1,8 @@
 <div class="auth-container">
   <div class="card auth-card">
-    <h1 class="auth-title">Sign in to Slice</h1>
-    <p class="auth-subtitle">Welcome back. Please enter your details.</p>
+    <span class="badge">Privacy-First Network</span>
+    <h1 class="auth-title">Sign in to Rally</h1>
+    <p class="auth-subtitle">Welcome back. Enter your credentials to access your shielded travel vault.</p>
 
     <div *ngIf="errorMessage()" class="alert error">
       {{ errorMessage() }}
@@ -15,7 +16,7 @@
           type="email" 
           formControlName="email" 
           class="form-input" 
-          placeholder="name@company.com"
+          placeholder="nomad@rally.app"
           [class.invalid]="loginForm.controls.email.invalid && loginForm.controls.email.touched"
         >
       </div>
@@ -41,7 +42,7 @@
     </form>
     
     <div class="auth-footer">
-      <p>Don't have an account? <a href="/register">Sign up</a></p>
+      <p>Don't have an account? <a routerLink="/register">Create Shielded Account</a></p>
     </div>
   </div>
 </div>

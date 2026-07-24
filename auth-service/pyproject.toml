@@ -10,7 +10,8 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn>=0.29.0",
-    "maci-core"
+    "maci-core",
+    "plaid-python>=15.1.0"
 ]
 
 [tool.hatch.build.targets.wheel]

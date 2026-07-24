@@ -1,1 +1,38 @@
-<p>register works!</p>
+<div class="auth-container">
+  <div class="card auth-card">
+    <span class="badge">Zero-Knowledge Vault</span>
+    <h1 class="auth-title">Create Shielded Account</h1>
+    <p class="auth-subtitle">Join Rally. Real names remain hidden until mutual handshake.</p>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input type="text" formControlName="firstName" class="form-input" placeholder="Alex" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input type="text" formControlName="lastName" class="form-input" placeholder="Rivers" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" formControlName="email" class="form-input" placeholder="alex@rally.app" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" formControlName="password" class="form-input" placeholder="••••••••" />
+      </div>
+
+      <button type="submit" class="btn-primary auth-submit" [disabled]="registerForm.invalid || isSubmitting()">
+        {{ isSubmitting() ? 'Creating Vault Account...' : 'Create Account & Start Calibration' }}
+      </button>
+    </form>
+    
+    <div class="auth-footer">
+      <p>Already have an account? <a routerLink="/login">Sign in</a></p>
+    </div>
+  </div>
+</div>

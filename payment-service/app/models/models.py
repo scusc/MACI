@@ -50,3 +50,21 @@ class TreasuryTransaction(Base):
     )
 
     treasury = relationship("SwarmTreasury", back_populates="transactions")
+
+class Payment(Base):
+    __tablename__ = "slice_payments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pool_id = Column(UUID(as_uuid=True), index=True)
+    member_id = Column(UUID(as_uuid=True), index=True)
+    amount = Column(Integer, nullable=False)
+    platform_fee = Column(Integer, nullable=False, default=0)
+    currency = Column(String(3), nullable=False, default="USD")
+    gateway = Column(String(20), nullable=False)
+    gateway_payment_id = Column(String(200), index=True)
+    gateway_transfer_id = Column(String(200))
+    status = Column(String(20), nullable=False, default="pending", index=True)
+    payment_type = Column(String(20), nullable=False, default="deposit")
+    escrow_released_at = Column(DateTime(timezone=True))
+    refunded_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)

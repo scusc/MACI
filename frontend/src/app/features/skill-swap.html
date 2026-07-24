@@ -1,0 +1,49 @@
+<div class="skills-container">
+  <div class="skills-header">
+    <h2>🛠️ Pod Barter & Skill-Swapping Economy</h2>
+    <p>Offer your verified skills to offset shared villa and activity costs for the trip pod.</p>
+  </div>
+
+  <div class="skills-grid">
+    <!-- List Active Skills -->
+    <div class="skills-list">
+      <h3>Available Pod Skill Offers</h3>
+      <div *ngFor="let s of skills" class="skill-card">
+        <div class="card-badge">{{ s.category | uppercase }}</div>
+        <h4>{{ s.title }}</h4>
+        <p>{{ s.description }}</p>
+        <div class="card-footer">
+          <span class="offered-by">Offered by: <strong>{{ s.offeredBy }}</strong></span>
+          <span class="val-offset">Cost Offset Value: <strong>${{ s.estimatedValueCents / 100 }}</strong></span>
+        </div>
+        <button class="btn-request">Propose Skill Swap</button>
+      </div>
+    </div>
+
+    <!-- Offer New Skill Form -->
+    <div class="offer-form-card">
+      <h3>Offer Your Skill to the Pod</h3>
+      <form (submit)="addSkill()">
+        <label>Skill Category</label>
+        <select [(ngModel)]="newCategory" name="category">
+          <option value="photography">📷 Photography / Video</option>
+          <option value="language">🗣️ Local Language Interpreter</option>
+          <option value="driving">🚗 Verified Driver</option>
+          <option value="cooking">👨‍🍳 Cooking & Culinary</option>
+          <option value="logistics">📋 Logistics & Itinerary Planner</option>
+        </select>
+
+        <label>Skill Title</label>
+        <input type="text" [(ngModel)]="newTitle" name="title" placeholder="e.g. 4K Drone Photography" required />
+
+        <label>Description</label>
+        <textarea [(ngModel)]="newDescription" name="description" placeholder="Describe what you will provide for the group..."></textarea>
+
+        <label>Estimated Value ($ Offset)</label>
+        <input type="number" [(ngModel)]="newValueDollars" name="value" min="10" max="1000" />
+
+        <button type="submit" class="btn-submit">Add Skill Offer</button>
+      </form>
+    </div>
+  </div>
+</div>

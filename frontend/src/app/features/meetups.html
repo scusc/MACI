@@ -1,0 +1,33 @@
+<div class="meetups-container">
+  <div class="header">
+    <h2>☕ Local "Micro-Commitments" & Vibe Checks</h2>
+    <p>Test compatibility with local coffee meetups in your home city before booking long international trips. Secured by 4-digit PIN and scanned QR escrows.</p>
+  </div>
+
+  <div class="meetup-cards">
+    <div *ngFor="let m of meetups" class="card">
+      <div class="dist-badge">📍 {{ m.distanceMiles }} miles away</div>
+      <h3>{{ m.title }}</h3>
+      <div class="info">
+        <span>⏰ {{ m.startTime }}</span>
+        <span>🛡️ Escrow Hold: <strong>${{ m.escrowCents / 100 }}</strong></span>
+      </div>
+      <div class="host">Host: {{ m.hostName }}</div>
+      <button class="btn-checkin" (click)="openCheckIn(m.id)">Check In with Host PIN</button>
+    </div>
+  </div>
+
+  <!-- PIN Modal -->
+  <div *ngIf="showCheckInModal" class="modal-backdrop">
+    <div class="modal">
+      <h3>Physical PIN Check-In</h3>
+      <p>Ask your host at the meetup for their 4-digit PIN to release card escrow hold.</p>
+      <input type="text" [(ngModel)]="enteredPin" maxlength="4" placeholder="e.g. 4921" />
+      <div *ngIf="checkInStatus" class="status-msg">{{ checkInStatus }}</div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="showCheckInModal = false">Cancel</button>
+        <button class="btn-confirm" (click)="submitPinCheckIn()">Verify PIN</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { Subscription } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface ChatMessage {
   sender: string;
@@ -24,7 +25,7 @@ export class ChatService {
       // Get the JWT token
       const token = localStorage.getItem('slice_token');
       // Connect to the Asset Service WebSocket endpoint with authentication
-      this.socket$ = webSocket(`ws://localhost:8002/ws/chat/${poolId}?token=${token}`);
+      this.socket$ = webSocket(`${environment.wsUrl}/ws/chat/${poolId}?token=${token}`);
       
       this.subscription = this.socket$.subscribe({
         next: (msg) => {

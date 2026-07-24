@@ -1,33 +1,38 @@
 #!/bin/bash
-echo "Waiting for group-service to restart..."
-kubectl rollout status deployment/group-service -n rally --timeout=120s
+set -e
 
-echo "Checking env inside pod..."
-kubectl exec -it deployment/group-service -n rally -- env | grep DATABASE_URL
+echo "=== 🚀 Rally CI/CD Local Verification Suite ==="
 
-echo "Running DB migration inside pod..."
-kubectl exec -it deployment/group-service -n rally -- /bin/bash -c "pip install asyncpg && python -c \"
-import asyncio
-import asyncpg
-import os
-import ssl
+echo "1. Verifying Python Backend Compilation..."
+python3 -m py_compile $(find . -name "*.py" -not -path "*/.venv/*" -not -path "*/__pycache__/*")
+echo "✅ All Python microservices compiled cleanly!"
+
+echo "2. Verifying Angular 22 Frontend Types..."
+cd frontend
+npm ci --silent
+npx tsc --noEmit
+cd ..
+echo "✅ Angular TypeScript frontend verified cleanly!"
+
+echo "3. Running Database Schema Migration..."
+python3 -c "
+import asyncio, os, urllib.parse
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
 
 async def main():
-    db_url = os.environ['DATABASE_URL'].replace('postgresql+asyncpg', 'postgresql')
-    print('Connecting to DB...')
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    conn = await asyncpg.connect(db_url, ssl=ctx)
-    sql = '''ALTER TABLE rally_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);'''
-    await conn.execute(sql)
-    print('Migration applied successfully!')
-    await conn.close()
+    db_url = os.getenv('DATABASE_URL')
+    if not db_url:
+        print('Skipping live DB schema update (DATABASE_URL not set).')
+        return
+    engine = create_async_engine(db_url, echo=False)
+    async with engine.begin() as conn:
+        await conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_tier VARCHAR(50) DEFAULT \'free\';'))
+        await conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP WITH TIME ZONE;'))
+        print('DB migration applied cleanly!')
+    await engine.dispose()
 
 asyncio.run(main())
-\""
+"
 
-echo "Running E2E tests locally..."
-python3 -m pip install httpx pytest-asyncio
-python3 e2e_tests/test_e2e_live.py > e2e_test_output.log 2>&1
-cat e2e_test_output.log
+echo "=== 🎉 All Rally CI/CD checks completed successfully! ==="

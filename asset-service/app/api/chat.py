@@ -25,8 +25,14 @@ class ConnectionManager:
 
     async def broadcast(self, message: str, pool_id: str):
         if pool_id in self.active_connections:
+            dead_connections = []
             for connection in self.active_connections[pool_id]:
-                await connection.send_text(message)
+                try:
+                    await connection.send_text(message)
+                except Exception:
+                    dead_connections.append(connection)
+            for dead in dead_connections:
+                self.disconnect(dead, pool_id)
 
 manager = ConnectionManager()
 
@@ -53,13 +59,29 @@ async def chat_endpoint(
             # Wait for a message from a user in the group chat
             data = await websocket.receive_text()
             
+            # RxJS WebSocketSubject automatically JSON.stringifies primitive strings. 
+            # We must decode it if it's a valid JSON string.
+            print(f"RAW WS DATA: {data}")
+            try:
+                parsed_data = json.loads(data)
+                if isinstance(parsed_data, str):
+                    text_content = parsed_data
+                else:
+                    text_content = str(parsed_data)
+                print(f"PARSED DATA: {parsed_data}, TYPE: {type(parsed_data)}")
+            except json.JSONDecodeError as e:
+                print(f"JSON ERROR: {e}")
+                text_content = data
+            
+            print(f"FINAL TEXT CONTENT: {text_content}")
+                
             # Broadcast the user's message to everyone in the room
-            await manager.broadcast(json.dumps({"sender": "User", "text": data}), pool_id)
+            await manager.broadcast(json.dumps({"sender": "User", "text": text_content}), pool_id)
             
             # Trigger the AI Concierge Swarm ONLY if explicitly called
-            if data.strip().lower().startswith("@slice") or data.strip().lower().startswith("/ai"):
+            if text_content.strip().lower().startswith("@slice") or text_content.strip().lower().startswith("/ai"):
                 # Clean the trigger from the prompt
-                prompt = data.replace("@Slice", "").replace("@slice", "").replace("/ai", "").strip()
+                prompt = text_content.lower().replace("@slice", "").replace("/ai", "").strip()
                 
                 # TODO: Retrieve the pool's location/dates from DB using pool_id
                 # destination = db.query(Pool).filter(id=pool_id).first().destination
@@ -67,12 +89,25 @@ async def chat_endpoint(
                 mock_date = "2026-08-01"
                 
                 try:
-                    ai_response = await run_concierge_swarm(prompt, mock_destination, mock_date)
+                    import asyncio
+                    print("ABOUT TO CALL AI SWARM...")
+                    ai_task = asyncio.create_task(run_concierge_swarm(prompt, mock_destination, mock_date))
+                    
+                    # Add a timeout so it doesn't hang forever and block the websocket
+                    try:
+                        ai_response = await asyncio.wait_for(ai_task, timeout=20.0)
+                        print("AI SWARM RETURNED SUCCESSFULLY!")
+                    except asyncio.TimeoutError:
+                        print("AI SWARM TIMED OUT AFTER 20 SECONDS!")
+                        ai_response = "The AI Concierge is taking too long to respond."
+                        
                     # Broadcast the AI's response back to the room
                     await manager.broadcast(json.dumps({"sender": "Slice AI", "text": ai_response}), pool_id)
                 except Exception as e:
                     print(f"AI Swarm Error: {e}")
-                    await manager.broadcast(json.dumps({"sender": "System", "text": "The AI Concierge is currently unavailable."}), pool_id)
+                    import traceback
+                    traceback.print_exc()
+                    await manager.broadcast(json.dumps({"sender": "System", "text": f"The AI Concierge is currently unavailable. Error: {e}"}), pool_id)
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket, pool_id)

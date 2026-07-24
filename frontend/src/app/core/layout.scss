@@ -2,11 +2,12 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: #0f172a;
 }
 
 .minimal-header {
-  background-color: var(--color-white);
-  border-bottom: 1px solid var(--color-gray-200);
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
   padding: 1rem 0;
   position: sticky;
   top: 0;
@@ -23,41 +24,55 @@
 }
 
 .logo {
-  font-weight: 700;
+  font-weight: 800;
   font-size: 1.25rem;
   letter-spacing: -0.05em;
-  color: var(--color-black);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  span {
+    font-size: 0.65rem;
+    background: #0ea5e9;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0;
+  }
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
 
   a {
     text-decoration: none;
-    color: var(--color-gray-600);
+    color: #94a3b8;
     font-size: 0.875rem;
-    font-weight: 500;
-    transition: color var(--transition-fast);
+    font-weight: 600;
+    transition: color 0.2s ease;
 
     &:hover {
-      color: var(--color-black);
+      color: #f8fafc;
+    }
+  }
+
+  .passport-link {
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.15);
+    padding: 4px 10px;
+    border-radius: 6px;
+
+    &:hover {
+      background: rgba(168, 85, 247, 0.3);
+      color: #e9d5ff;
     }
   }
 }
 
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: var(--color-gray-800);
-}
-
 .main-content {
   flex: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
   width: 100%;
 }

@@ -16,6 +16,14 @@ class TokenResponse(BaseModel):
 class RefreshRequest(BaseModel):
     refresh_token: str
 
+class OAuthRequest(BaseModel):
+    provider: str  # e.g., 'google', 'apple', 'linkedin'
+    provider_token: str # Replaces raw data. Token to be verified against provider's public JWKS.
+
+class LinkAccountRequest(BaseModel):
+    provider: str
+    provider_token: str
+
 class AuthResponse(BaseModel):
     token: TokenResponse
     user: UserResponse

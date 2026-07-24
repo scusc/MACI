@@ -1,0 +1,78 @@
+<div class="quiz-container">
+  <div class="quiz-card">
+    <div class="header">
+      <span class="badge">AI Psychometric Calibration</span>
+      <h2>Step {{ step }} of 5</h2>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="step * 20"></div>
+      </div>
+    </div>
+
+    <!-- Step 1: Social Battery -->
+    <div *ngIf="step === 1" class="quiz-step">
+      <h3>⚡ Social Battery & Recharge Time</h3>
+      <p>How do you recharge after a high-energy group excursion?</p>
+      <div class="slider-box">
+        <span class="label">Quiet Solo Downtime (1)</span>
+        <input type="range" min="1" max="10" [(ngModel)]="socialBattery" />
+        <span class="label">Non-stop Group Energy (10)</span>
+      </div>
+      <div class="current-val">Selected Value: <strong>{{ socialBattery }}/10</strong></div>
+    </div>
+
+    <!-- Step 2: Travel Pacing -->
+    <div *ngIf="step === 2" class="quiz-step">
+      <h3>🏃 Travel Pacing & Rhythm</h3>
+      <p>What is your ideal daily travel speed?</p>
+      <div class="slider-box">
+        <span class="label">Slow & Relaxed (1)</span>
+        <input type="range" min="1" max="10" [(ngModel)]="pacing" />
+        <span class="label">Action-Packed Sprint (10)</span>
+      </div>
+      <div class="current-val">Selected Value: <strong>{{ pacing }}/10</strong></div>
+    </div>
+
+    <!-- Step 3: Budget Philosophy -->
+    <div *ngIf="step === 3" class="quiz-step">
+      <h3>💰 Budget Philosophy</h3>
+      <p>How do you prefer allocating your daily travel budget?</p>
+      <div class="slider-box">
+        <span class="label">Strict Frugal Nomad (1)</span>
+        <input type="range" min="1" max="10" [(ngModel)]="budgetTolerance" />
+        <span class="label">Boutique Luxury Splurge (10)</span>
+      </div>
+      <div class="current-val">Selected Value: <strong>{{ budgetTolerance }}/10</strong></div>
+    </div>
+
+    <!-- Step 4: Spontaneity -->
+    <div *ngIf="step === 4" class="quiz-step">
+      <h3>🗺️ Spontaneity vs Planning</h3>
+      <p>How do you approach trip itineraries?</p>
+      <div class="slider-box">
+        <span class="label">Strict Hour-by-Hour Plan (1)</span>
+        <input type="range" min="1" max="10" [(ngModel)]="spontaneity" />
+        <span class="label">100% Spontaneous Wanderer (10)</span>
+      </div>
+      <div class="current-val">Selected Value: <strong>{{ spontaneity }}/10</strong></div>
+    </div>
+
+    <!-- Step 5: Conflict Resolution -->
+    <div *ngIf="step === 5" class="quiz-step">
+      <h3>🤝 Conflict Resolution Style</h3>
+      <p>When unexpected travel friction occurs, how do you handle it?</p>
+      <div class="slider-box">
+        <span class="label">Quiet Diplomatic Adaptor (1)</span>
+        <input type="range" min="1" max="10" [(ngModel)]="conflictStyle" />
+        <span class="label">Direct Problem Solver (10)</span>
+      </div>
+      <div class="current-val">Selected Value: <strong>{{ conflictStyle }}/10</strong></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-sec" (click)="prevStep()" [disabled]="step === 1">Back</button>
+      <button class="btn-primary" (click)="nextStep()" [disabled]="isSubmitting">
+        {{ step === 5 ? (isSubmitting ? 'Calibrating AI...' : 'Complete Quiz') : 'Next' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -18,8 +18,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if request.url.path.startswith("/health") or "/webhooks/" in request.url.path:
             return await call_next(request)
 
-        # Pass-through for auth routes
-        if "/api/v1/auth/" in request.url.path:
+        # Pass-through for auth routes and CORS preflight
+        if "/api/v1/auth/" in request.url.path or request.method == "OPTIONS":
             return await call_next(request)
 
         # Validate JWT

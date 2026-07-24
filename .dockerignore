@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+.venv
+**/.venv
+.git
+.github
+dist
+**/dist
+.nx
+**/.nx
+*.log
+e2e-screenshots
+screenshots
+.pytest_cache
+**/.pytest_cache
+__pycache__
+**/__pycache__

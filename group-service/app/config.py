@@ -9,11 +9,12 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    # Database
+    # Database & Cache
     database_url: str = os.getenv(
         "DATABASE_URL",
         "postgresql+asyncpg://rally:rally@localhost:5432/rally"
     )
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     # Service URLs (inter-service communication)
     payment_service_url: str = os.getenv("PAYMENT_SERVICE_URL", "http://localhost:8002")

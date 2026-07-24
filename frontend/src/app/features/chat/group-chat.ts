@@ -5,6 +5,7 @@ import { ChatService } from '../../core/chat.service';
 
 @Component({
   selector: 'app-group-chat',
+  standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './group-chat.html',
   styleUrl: './group-chat.scss',
@@ -12,17 +13,26 @@ import { ChatService } from '../../core/chat.service';
 export class GroupChat implements OnInit, OnDestroy {
   chatService = inject(ChatService);
   
-  // The input model bound to the chat input field
   newMessage = signal('');
+  
+  // ZK Privacy & Handshake state
+  hasVotedReveal = signal(false);
+  isIdentityRevealed = signal(false);
 
   ngOnInit() {
-    // In a real flow, this poolId comes from the Route params
-    // Hardcoding a demo poolId for now
     this.chatService.connect('demo-pool-123');
   }
 
   ngOnDestroy() {
     this.chatService.disconnect();
+  }
+
+  voteToRevealIdentity() {
+    this.hasVotedReveal.set(true);
+    // Simulate double-opt-in handshake unlock
+    setTimeout(() => {
+      this.isIdentityRevealed.set(true);
+    }, 1200);
   }
 
   sendMessage() {

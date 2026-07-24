@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from maci_core.config import settings
 from maci_core.core.exceptions import MACIError
 from app.api.auth import router as auth_router
+from app.api.subscription import router as subscription_router
 from app.api.webhooks import router as webhooks_router
 
 @asynccontextmanager
@@ -20,10 +21,11 @@ async def lifespan(app: FastAPI):
 from maci_core.observability import setup_observability
 
 app = FastAPI(
-    title="Slice Auth Service",
+    title="Rally Auth Service",
     lifespan=lifespan,
     docs_url="/docs",
 )
+
 
 # Inject Prometheus metrics and OpenTelemetry tracing
 setup_observability(app, "auth-service")
@@ -44,6 +46,7 @@ async def maci_error_handler(request, exc: MACIError):
     )
 
 app.include_router(auth_router, prefix=settings.API_PREFIX)
+app.include_router(subscription_router, prefix=settings.API_PREFIX)
 app.include_router(webhooks_router, prefix=settings.API_PREFIX)
 
 @app.get("/health")

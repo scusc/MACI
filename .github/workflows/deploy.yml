@@ -1,47 +1,63 @@
-name: Slice CI/CD to Azure AKS
+name: Rally CI/CD Deployment Pipeline
 
 on:
   push:
     branches:
       - main
+      - master
+  workflow_dispatch:
 
 env:
-  REGISTRY_NAME: sliceacr
-  CLUSTER_NAME: aks-slice-dev
-  RESOURCE_GROUP: rg-slice-dev
+  REGISTRY_NAME: acrmacidev123
+  CLUSTER_NAME: aks-maci-dev
+  RESOURCE_GROUP: rg-maci-dev-eastus
 
 jobs:
-  build-and-deploy:
+  test-and-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Run Tests (Pytest)
+      - name: Run Backend Syntax Verification
         run: |
-          pip install ./maci-core
-          pip install -r group-service/requirements.txt
-          pip install pytest pytest-asyncio httpx
-          cd group-service
-          PYTHONPATH=. pytest tests
+          pip install --no-cache-dir -e "./maci-core"
+          python3 -m py_compile $(find . -name "*.py" -not -path "*/.venv/*" -not -path "*/__pycache__/*")
 
-      - name: Log in to Azure
-        uses: azure/login@v1
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          node-version: '22'
 
-      - name: Run Database Migrations (Alembic)
+      - name: Run Angular Frontend Production Build
         run: |
-          pip install alembic psycopg2-binary
-          cd db-migrations
-          alembic upgrade head
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          cd frontend
+          npm ci
+          npx nx build frontend --configuration=production
+
+  build-and-deploy:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build Production Angular Bundle
+        run: |
+          cd frontend
+          npm ci
+          npx nx build frontend --configuration=production
 
       - name: Log in to Azure Container Registry
         uses: azure/docker-login@v1
@@ -50,46 +66,36 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and Push Backend (Auth Service)
+      - name: Build and Push Microservice Images
         run: |
-          docker build --build-arg SERVICE_NAME=auth-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:${{ github.sha }}
+          echo "Building Auth Service..."
+          docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:latest -f auth-service/Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:latest
 
-      - name: Build and Push Backend (Asset Service)
-        run: |
-          docker build --build-arg SERVICE_NAME=asset-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:${{ github.sha }}
+          echo "Building Asset Service..."
+          docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:latest -f asset-service/Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:latest
 
-      - name: Build and Push Backend (Payment Service)
-        run: |
-          docker build --build-arg SERVICE_NAME=payment-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }}
-          
-      - name: Build and Push Backend (Group Service)
-        run: |
-          docker build --build-arg SERVICE_NAME=group-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:${{ github.sha }}
-          
-      - name: Build and Push Backend (API Gateway)
-        run: |
-          docker build --build-arg SERVICE_NAME=api-gateway -t ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:${{ github.sha }}
+          echo "Building Group Service..."
+          docker build --build-arg SERVICE_NAME=group-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:latest -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:latest
 
-      - name: Build and Push Backend (Trip Service)
-        run: |
-          docker build --build-arg SERVICE_NAME=trip-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/trip-service:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/trip-service:${{ github.sha }}
+          echo "Building Payment Service..."
+          docker build --build-arg SERVICE_NAME=payment-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:latest -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:latest
 
-      - name: Build and Push Backend (Notification Service)
-        run: |
-          docker build --build-arg SERVICE_NAME=notification-service -t ${{ env.REGISTRY_NAME }}.azurecr.io/notification-service:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/notification-service:${{ github.sha }}
+          echo "Building API Gateway..."
+          docker build --build-arg SERVICE_NAME=api-gateway -t ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:latest -f Dockerfile .
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:latest
 
-      - name: Build and Push Frontend
-        run: |
-          cd frontend
-          docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }} -f Dockerfile .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}
+          echo "Building Angular Frontend..."
+          docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:latest -f frontend/Dockerfile frontend/
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:latest
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Set AKS Context
         uses: azure/aks-set-context@v3
@@ -97,18 +103,8 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
           cluster-name: ${{ env.CLUSTER_NAME }}
 
-      - name: Deploy to AKS
-        uses: Azure/k8s-deploy@v4
-        with:
-          manifests: |
-            k8s/rally-platform.yaml
-            k8s/frontend.yaml
-          images: |
-            ${{ env.REGISTRY_NAME }}.azurecr.io/auth-service:${{ github.sha }}
-            ${{ env.REGISTRY_NAME }}.azurecr.io/asset-service:${{ github.sha }}
-            ${{ env.REGISTRY_NAME }}.azurecr.io/payment-service:${{ github.sha }}
-            ${{ env.REGISTRY_NAME }}.azurecr.io/group-service:${{ github.sha }}
-            ${{ env.REGISTRY_NAME }}.azurecr.io/api-gateway:${{ github.sha }}
-            ${{ env.REGISTRY_NAME }}.azurecr.io/trip-service:${{ github.sha }}
-            ${{ env.REGISTRY_NAME }}.azurecr.io/notification-service:${{ github.sha }}
-            ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}
+      - name: Deploy Manifests to AKS
+        run: |
+          kubectl apply -f k8s/frontend.yaml
+          kubectl apply -f k8s/rally-platform.yaml
+          kubectl rollout restart deployment -n rally

@@ -2,6 +2,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
+import { environment } from '../../environments/environment';
+
 export interface User {
   id: string;
   email: string;
@@ -23,8 +25,7 @@ interface TokenResponse {
 export class AuthService {
   private http = inject(HttpClient);
   
-  // In an AKS deployment, this would be mapped via environment variables
-  private apiUrl = 'http://localhost:8001/api/v1/auth'; 
+  private apiUrl = `${environment.apiUrl}/auth`; 
 
   // Global reactive state for the logged-in user
   currentUser = signal<User | null>(null);
@@ -33,16 +34,15 @@ export class AuthService {
     return localStorage.getItem('slice_token');
   }
 
-  login(credentials: any): Observable<TokenResponse> {
-    const formData = new URLSearchParams();
-    formData.set('username', credentials.email); // OAuth2 password flow expects 'username'
-    formData.set('password', credentials.password);
+  login(credentials: any): Observable<{token: TokenResponse, user: User}> {
+    const payload = {
+      email: credentials.email,
+      password: credentials.password
+    };
 
-    return this.http.post<TokenResponse>(`${this.apiUrl}/login`, formData.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    }).pipe(
+    return this.http.post<{token: TokenResponse, user: User}>(`${this.apiUrl}/login`, payload).pipe(
       tap(response => {
-        localStorage.setItem('slice_token', response.access_token);
+        localStorage.setItem('slice_token', response.token.access_token);
         this.fetchProfile().subscribe();
       })
     );

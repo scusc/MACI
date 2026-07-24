@@ -53,10 +53,21 @@ async def release_pool_escrow(db: AsyncSession, pool_id: uuid.UUID) -> EscrowRel
     await db.commit()
 
     # Trigger vendor payout via Stripe Connect Express
-    # In reality, we'd query the Asset table to find the host's stripe_connect_id
-    # For MVP, we mock the host's connected account ID
-    vendor_stripe_account_id = "acct_mock_123"
-    payout_success = await execute_vendor_payout(db, pool_id, vendor_stripe_account_id)
+    from maci_core.models.pool import Pool
+    from maci_core.models.user import User
+    
+    vendor_stmt = (
+        select(User.stripe_connect_id)
+        .join(Pool, Pool.host_id == User.id)
+        .where(Pool.id == pool_id)
+    )
+    vendor_stripe_account_id = (await db.execute(vendor_stmt)).scalar()
+    
+    if not vendor_stripe_account_id:
+        logger.error(f"Vendor for pool {pool_id} does not have a connected Stripe account. Payout aborted.")
+        payout_success = False
+    else:
+        payout_success = await execute_vendor_payout(db, pool_id, vendor_stripe_account_id)
 
     return EscrowRelease(
         pool_id=pool_id,

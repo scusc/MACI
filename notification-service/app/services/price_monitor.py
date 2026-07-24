@@ -6,9 +6,7 @@ import logging
 import asyncio
 from typing import List
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db import get_db
+
 # Note: we need to setup a small db connection in notification service if it touches the DB directly,
 # or it can call group-service APIs. For microservices, calling group-service is better.
 # For now, since they share the same physical DB during development, we'll just mock the behavior.

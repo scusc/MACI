@@ -34,7 +34,11 @@ class Settings(BaseSettings):
         description="TTL for cached flight search results",
     )
 
-    # ── Auth ─────────────────────────────────────────────────────────
+    # ── Auth & Security ──────────────────────────────────────────────
+    SECRET_KEY: str = Field(
+        default="CHANGE-ME-IN-PRODUCTION-use-openssl-rand-hex-32-for-vault",
+        description="Master secret key for Data Vault encryption (PBKDF2/Fernet). MUST be changed.",
+    )
     JWT_SECRET_KEY: str = Field(
         default="CHANGE-ME-IN-PRODUCTION-use-openssl-rand-hex-32",
         description="Secret key for JWT signing. MUST be changed in production.",
@@ -42,6 +46,16 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # ── Stripe (Identity & Fintech) ──────────────────────────────────
+    STRIPE_SECRET_KEY: str = Field(
+        default="",
+        description="Stripe Secret API Key for Identity KYC and Connect Escrow.",
+    )
+    STRIPE_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Stripe Webhook signing secret.",
+    )
 
     # ── LLM ──────────────────────────────────────────────────────────
     LLM_MODEL: str = Field(
@@ -119,6 +133,7 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore",
     }
 
 
