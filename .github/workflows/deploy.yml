@@ -11,6 +11,7 @@ env:
   REGISTRY_NAME: acrmacidev2025
   CLUSTER_NAME: aks-maci-dev
   RESOURCE_GROUP: rg-maci-dev-eastus
+  SUBSCRIPTION_ID: 116d28c2-d28d-424f-b0d7-e9d4987f366d
 
 jobs:
   build-and-deploy:
@@ -24,59 +25,66 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Log in to Azure Container Registry
-        run: az acr login --name ${{ env.REGISTRY_NAME }}
+      - name: Set correct Azure subscription
+        run: az account set --subscription ${{ env.SUBSCRIPTION_ID }}
 
-      # Build all backend microservices via ACR Build Tasks (fast, cloud-native)
+      - name: Log in to ACR (admin credentials)
+        run: |
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+            ${{ env.REGISTRY_NAME }}.azurecr.io \
+            -u "${{ secrets.ACR_USERNAME }}" \
+            --password-stdin
+
+      # Build backend services via ACR Build Tasks (cloud-native, no local push)
       - name: Build Auth Service (ACR Task)
         run: |
           az acr build --registry ${{ env.REGISTRY_NAME }} \
+            --subscription ${{ env.SUBSCRIPTION_ID }} \
             --image auth-service:latest \
             --file auth-service/Dockerfile \
             --platform linux/amd64 \
-            --no-wait \
             .
 
       - name: Build Asset Service (ACR Task)
         run: |
           az acr build --registry ${{ env.REGISTRY_NAME }} \
+            --subscription ${{ env.SUBSCRIPTION_ID }} \
             --image asset-service:latest \
             --file asset-service/Dockerfile \
             --platform linux/amd64 \
-            --no-wait \
             .
 
       - name: Build Group Service (ACR Task)
         run: |
           az acr build --registry ${{ env.REGISTRY_NAME }} \
+            --subscription ${{ env.SUBSCRIPTION_ID }} \
             --image group-service:latest \
             --file Dockerfile \
             --build-arg SERVICE_NAME=group-service \
             --platform linux/amd64 \
-            --no-wait \
             .
 
       - name: Build Payment Service (ACR Task)
         run: |
           az acr build --registry ${{ env.REGISTRY_NAME }} \
+            --subscription ${{ env.SUBSCRIPTION_ID }} \
             --image payment-service:latest \
             --file Dockerfile \
             --build-arg SERVICE_NAME=payment-service \
             --platform linux/amd64 \
-            --no-wait \
             .
 
       - name: Build API Gateway (ACR Task)
         run: |
           az acr build --registry ${{ env.REGISTRY_NAME }} \
+            --subscription ${{ env.SUBSCRIPTION_ID }} \
             --image api-gateway:latest \
             --file Dockerfile \
             --build-arg SERVICE_NAME=api-gateway \
             --platform linux/amd64 \
-            --no-wait \
             .
 
-      # Frontend: build locally on runner (node_modules excluded from ACR)
+      # Frontend: build locally on runner then docker push
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -96,30 +104,18 @@ jobs:
         working-directory: frontend
         run: |
           docker build \
-            --build-arg BUILDKIT_INLINE_CACHE=1 \
             -t ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:latest \
             -f Dockerfile \
             .
           docker push ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:latest
 
-      # Wait for all ACR builds to finish
-      - name: Wait for ACR Builds to Complete
-        run: |
-          echo "Waiting for ACR build tasks to complete..."
-          sleep 30
-          for img in auth-service asset-service group-service payment-service api-gateway; do
-            echo "Checking $img..."
-            LAST=$(az acr task list-runs --registry ${{ env.REGISTRY_NAME }} \
-              --filter "imageName=eq:$img" \
-              --query "[0].status" -o tsv 2>/dev/null || echo "Unknown")
-            echo "$img last build: $LAST"
-          done
-
       - name: Set AKS Context
-        uses: azure/aks-set-context@v4
-        with:
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          cluster-name: ${{ env.CLUSTER_NAME }}
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.CLUSTER_NAME }} \
+            --subscription ${{ env.SUBSCRIPTION_ID }} \
+            --overwrite-existing
 
       - name: Deploy Manifests to AKS
         run: |
@@ -127,6 +123,9 @@ jobs:
           kubectl apply -f k8s/frontend.yaml
           kubectl rollout restart deployment -n rally
           echo "Waiting for rollout..."
-          kubectl rollout status deployment/frontend -n rally --timeout=120s || true
-          kubectl rollout status deployment/api-gateway -n rally --timeout=120s || true
+          kubectl rollout status deployment/frontend -n rally --timeout=180s || true
+          kubectl rollout status deployment/api-gateway -n rally --timeout=180s || true
+          echo "=== Services ==="
           kubectl get svc -n rally
+          echo "=== Pods ==="
+          kubectl get pods -n rally
