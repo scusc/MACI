@@ -142,6 +142,33 @@ async def list_trips(
         responses.append(_build_trip_response(trip, progress))
     return responses
 
+@router.get("/feed", response_model=List[TripResponse])
+async def trips_feed(
+    destination: Optional[str] = None,
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public feed of open trips (no auth required)."""
+    stmt = (
+        select(Trip)
+        .options(selectinload(Trip.members))
+        .where(Trip.status.in_(["collecting", "active"]))
+        .order_by(Trip.created_at.desc())
+        .limit(limit)
+    )
+    if destination:
+        stmt = stmt.where(Trip.destination.ilike(f"%{destination}%"))
+
+    result = await db.execute(stmt)
+    trips = result.scalars().all()
+
+    responses = []
+    for trip in trips:
+        progress = await get_commitment_progress(db, trip)
+        responses.append(_build_trip_response(trip, progress))
+    return responses
+
+
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_trip(
     trip_id: uuid.UUID,

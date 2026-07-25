@@ -90,6 +90,7 @@ async def get_me(
     """Fetch current user profile."""
     from sqlalchemy import select
     from maci_core.models.user import User
+    from app.services.auth_service import decrypt_pii
     import uuid
     stmt = select(User).where(User.id == uuid.UUID(user_id))
     user = (await db.execute(stmt)).scalar_one_or_none()
@@ -98,11 +99,11 @@ async def get_me(
     return {
         "id": str(user.id),
         "email": user.email,
-        "first_name": user.first_name or "",
-        "last_name": user.last_name or "",
+        "first_name": decrypt_pii(user.first_name) if user.first_name else "",
+        "last_name": decrypt_pii(user.last_name) if user.last_name else "",
         "bio": getattr(user, 'bio', ''),
         "origin_airport": getattr(user, 'origin_airport', ''),
-        "avatar_url": getattr(user, 'avatar_url', ''),
+        "avatar_url": getattr(user, 'avatar_url', '') or getattr(user, 'avatar_image_url', ''),
         "is_verified": user.kyc_status == "verified",
         "kyc_status": user.kyc_status,
         "karma_score": user.karma_score
@@ -117,14 +118,15 @@ async def update_me(
     """Update current user profile details."""
     from sqlalchemy import select
     from maci_core.models.user import User
+    from app.services.auth_service import decrypt_pii, encrypt_pii
     import uuid
     stmt = select(User).where(User.id == uuid.UUID(user_id))
     user = (await db.execute(stmt)).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if body.first_name is not None: user.first_name = body.first_name
-    if body.last_name is not None: user.last_name = body.last_name
+    if body.first_name is not None: user.first_name = encrypt_pii(body.first_name)
+    if body.last_name is not None: user.last_name = encrypt_pii(body.last_name)
     if body.bio is not None: setattr(user, 'bio', body.bio)
     if body.origin_airport is not None: setattr(user, 'origin_airport', body.origin_airport)
     if body.avatar_url is not None: setattr(user, 'avatar_url', body.avatar_url)
@@ -134,11 +136,11 @@ async def update_me(
     return {
         "id": str(user.id),
         "email": user.email,
-        "first_name": user.first_name or "",
-        "last_name": user.last_name or "",
+        "first_name": decrypt_pii(user.first_name) if user.first_name else "",
+        "last_name": decrypt_pii(user.last_name) if user.last_name else "",
         "bio": getattr(user, 'bio', ''),
         "origin_airport": getattr(user, 'origin_airport', ''),
-        "avatar_url": getattr(user, 'avatar_url', ''),
+        "avatar_url": getattr(user, 'avatar_url', '') or getattr(user, 'avatar_image_url', ''),
         "is_verified": user.kyc_status == "verified",
         "kyc_status": user.kyc_status,
         "karma_score": user.karma_score

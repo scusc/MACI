@@ -56,6 +56,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Rally Group Service",
     description="Manages trips, members, and commitments for Rally platform.",
+    redirect_slashes=False,
     version="1.0.0",
     lifespan=lifespan,
 )
