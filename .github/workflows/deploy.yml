@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY_NAME: acrmacidev2025
+  REGISTRY: acrmacidev2025.azurecr.io
   CLUSTER_NAME: aks-maci-dev
   RESOURCE_GROUP: rg-maci-dev-eastus
   SUBSCRIPTION_ID: 116d28c2-d28d-424f-b0d7-e9d4987f366d
@@ -31,60 +31,59 @@ jobs:
       - name: Log in to ACR (admin credentials)
         run: |
           echo "${{ secrets.ACR_PASSWORD }}" | docker login \
-            ${{ env.REGISTRY_NAME }}.azurecr.io \
+            ${{ env.REGISTRY }} \
             -u "${{ secrets.ACR_USERNAME }}" \
             --password-stdin
 
-      # Build backend services via ACR Build Tasks (cloud-native, no local push)
-      - name: Build Auth Service (ACR Task)
-        run: |
-          az acr build --registry ${{ env.REGISTRY_NAME }} \
-            --subscription ${{ env.SUBSCRIPTION_ID }} \
-            --image auth-service:latest \
-            --file auth-service/Dockerfile \
-            --platform linux/amd64 \
-            .
+      # ── Set up Docker Buildx for efficient caching ──────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Asset Service (ACR Task)
+      # ── Build & push all backend microservices ──────────────────────────
+      - name: Build & Push Auth Service
         run: |
-          az acr build --registry ${{ env.REGISTRY_NAME }} \
-            --subscription ${{ env.SUBSCRIPTION_ID }} \
-            --image asset-service:latest \
-            --file asset-service/Dockerfile \
-            --platform linux/amd64 \
+          docker build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/auth-service:latest \
+            -f auth-service/Dockerfile \
             .
+          docker push ${{ env.REGISTRY }}/auth-service:latest
 
-      - name: Build Group Service (ACR Task)
+      - name: Build & Push Asset Service
         run: |
-          az acr build --registry ${{ env.REGISTRY_NAME }} \
-            --subscription ${{ env.SUBSCRIPTION_ID }} \
-            --image group-service:latest \
-            --file Dockerfile \
+          docker build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/asset-service:latest \
+            -f asset-service/Dockerfile \
+            .
+          docker push ${{ env.REGISTRY }}/asset-service:latest
+
+      - name: Build & Push Group Service
+        run: |
+          docker build --platform linux/amd64 \
             --build-arg SERVICE_NAME=group-service \
-            --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/group-service:latest \
+            -f Dockerfile \
             .
+          docker push ${{ env.REGISTRY }}/group-service:latest
 
-      - name: Build Payment Service (ACR Task)
+      - name: Build & Push Payment Service
         run: |
-          az acr build --registry ${{ env.REGISTRY_NAME }} \
-            --subscription ${{ env.SUBSCRIPTION_ID }} \
-            --image payment-service:latest \
-            --file Dockerfile \
+          docker build --platform linux/amd64 \
             --build-arg SERVICE_NAME=payment-service \
-            --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/payment-service:latest \
+            -f Dockerfile \
             .
+          docker push ${{ env.REGISTRY }}/payment-service:latest
 
-      - name: Build API Gateway (ACR Task)
+      - name: Build & Push API Gateway
         run: |
-          az acr build --registry ${{ env.REGISTRY_NAME }} \
-            --subscription ${{ env.SUBSCRIPTION_ID }} \
-            --image api-gateway:latest \
-            --file Dockerfile \
+          docker build --platform linux/amd64 \
             --build-arg SERVICE_NAME=api-gateway \
-            --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/api-gateway:latest \
+            -f Dockerfile \
             .
+          docker push ${{ env.REGISTRY }}/api-gateway:latest
 
-      # Frontend: build locally on runner then docker push
+      # ── Build Angular frontend then Docker image ────────────────────────
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -101,14 +100,14 @@ jobs:
           npx nx build --configuration=production
 
       - name: Build & Push Frontend Docker Image
-        working-directory: frontend
         run: |
-          docker build \
-            -t ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:latest \
-            -f Dockerfile \
-            .
-          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/frontend:latest
+          docker build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/frontend:latest \
+            -f frontend/Dockerfile \
+            frontend/
+          docker push ${{ env.REGISTRY }}/frontend:latest
 
+      # ── Deploy to AKS ───────────────────────────────────────────────────
       - name: Set AKS Context
         run: |
           az aks get-credentials \
@@ -122,9 +121,9 @@ jobs:
           kubectl apply -f k8s/rally-platform.yaml
           kubectl apply -f k8s/frontend.yaml
           kubectl rollout restart deployment -n rally
-          echo "Waiting for rollout..."
-          kubectl rollout status deployment/frontend -n rally --timeout=180s || true
-          kubectl rollout status deployment/api-gateway -n rally --timeout=180s || true
+          echo "=== Waiting for deployments ==="
+          kubectl rollout status deployment/api-gateway -n rally --timeout=240s || true
+          kubectl rollout status deployment/frontend -n rally --timeout=240s || true
           echo "=== Services ==="
           kubectl get svc -n rally
           echo "=== Pods ==="
