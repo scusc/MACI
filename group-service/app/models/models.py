@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, String, Integer, Date, DateTime, Text, ForeignKey,
-    UniqueConstraint, CheckConstraint
+    UniqueConstraint, CheckConstraint, func
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -191,3 +191,17 @@ class TripMember(Base):
     declined_at = Column(DateTime(timezone=True))
 
     trip = relationship("Trip", back_populates="members")
+
+
+class BrandConfig(Base):
+    __tablename__ = "rally_brand_configs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organizer_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    brand_name = Column(String(100))
+    logo_url = Column(String(500))
+    primary_color = Column(String(20))
+    secondary_color = Column(String(20))
+    tagline = Column(String(255))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
