@@ -76,6 +76,7 @@ from app.routes.handshake import router as handshake_router
 from app.routes.meetups import router as meetups_router
 from app.routes.skill_swap import router as skill_swap_router
 from app.routes.trips import router as trips_router
+from app.routes.organizer import router as organizer_router
 
 app.include_router(trips_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
@@ -83,6 +84,7 @@ app.include_router(chat_router, prefix="/api/v1")
 app.include_router(handshake_router, prefix="/api/v1")
 app.include_router(meetups_router, prefix="/api/v1")
 app.include_router(skill_swap_router, prefix="/api/v1")
+app.include_router(organizer_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["health"])

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: acrmacidev123.azurecr.io/frontend:latest
+          image: acrmacidev2025.azurecr.io/frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80

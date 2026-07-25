@@ -15,8 +15,8 @@ services:
     environment:
       - AUTH_SERVICE_URL=http://auth-service:8000
       - ASSET_SERVICE_URL=http://asset-service:8000
-      - GROUP_SERVICE_URL=http://group-service:80
-      - PAYMENT_SERVICE_URL=http://payment-service:80
+      - GROUP_SERVICE_URL=http://group-service:8000
+      - PAYMENT_SERVICE_URL=http://payment-service:8000
     depends_on:
       - auth-service
       - asset-service

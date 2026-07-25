@@ -116,7 +116,7 @@ class PsychometricProfile(Base):
     
     # AI Embeddings & Narrative
     structured_bio: Mapped[dict] = mapped_column(JSONB, nullable=True) # e.g. {"travel_ethos": "...", "dealbreakers": "..."}
-    embedding: Mapped[list[float]] = mapped_column(Vector(768), nullable=True) # Gemini text-embedding-004 is 768d
+    embedding: Mapped[dict] = mapped_column(JSONB, nullable=True) # Gemini text-embedding-004 is 768d vector array
     
     # Anti-Cold-Start Logic
     profile_completeness_score: Mapped[float] = mapped_column(Float, default=0.0) # 0.0 to 100.0

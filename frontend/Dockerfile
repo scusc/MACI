@@ -1,3 +1,11 @@
+FROM node:22-alpine AS build
+ENV CYPRESS_INSTALL_BINARY=0
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps
+COPY . .
+RUN npx nx build --configuration=production
+
 FROM nginx:alpine
 
 RUN apk add --no-cache openssl && \
@@ -8,7 +16,7 @@ RUN apk add --no-cache openssl && \
     -subj "/C=US/ST=State/L=City/O=Rally/OU=IT/CN=rally-travel-app.eastus.cloudapp.azure.com"
 
 COPY default.conf /etc/nginx/conf.d/default.conf
-COPY dist/frontend/browser /usr/share/nginx/html
+COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
 
 EXPOSE 80 443
 

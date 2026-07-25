@@ -32,16 +32,20 @@ async def main():
     db_url = f"postgresql+asyncpg://maciadmin:{encoded}@psql2-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
     
     engine = create_async_engine(db_url, echo=False)
+    print("Enabling pgvector and geospatial extensions...")
+    for ext_sql in [
+        "CREATE EXTENSION IF NOT EXISTS vector;",
+        "CREATE EXTENSION IF NOT EXISTS cube;",
+        "CREATE EXTENSION IF NOT EXISTS earthdistance;"
+    ]:
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text(ext_sql))
+        except Exception as e:
+            print(f"Extension notice ({ext_sql.strip()}):", e)
+
     async with engine.begin() as conn:
-        print("Enabling pgvector and geospatial extensions...")
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS cube;"))
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS earthdistance;"))
-        
-        print("Dropping all existing tables...")
-        await conn.run_sync(CoreBase.metadata.drop_all)
-        await conn.run_sync(PaymentBase.metadata.drop_all)
-        print("Creating all tables for Slice...")
+        print("Creating missing tables for Slice...")
         await conn.run_sync(CoreBase.metadata.create_all)
         await conn.run_sync(PaymentBase.metadata.create_all)
     print("Tables created successfully!")

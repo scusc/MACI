@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-REGISTRY="acrmacidev123.azurecr.io"
+REGISTRY="acrmacidev2025.azurecr.io"
 RESOURCE_GROUP="rg-maci-dev-eastus"
 CLUSTER_NAME="aks-maci-dev"
 
 echo "=== 🚀 Building & Pushing Production AMD64 Containers for Azure AKS Cluster ==="
 
 echo "1. Logging into Azure ACR..."
-az acr login --name acrmacidev123
+az acr login --name acrmacidev2025
 
 echo "2. Building & Pushing Auth Service (linux/amd64)..."
 docker build --platform linux/amd64 -t $REGISTRY/auth-service:latest -f auth-service/Dockerfile .

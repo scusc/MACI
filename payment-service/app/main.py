@@ -50,8 +50,8 @@ app.add_middleware(
 
 # Include Routers
 from app.routes.escrow import router as escrow_router
-app.include_router(payments_router)
-app.include_router(webhooks_router)
+app.include_router(payments_router, prefix="/api/v1")
+app.include_router(webhooks_router, prefix="/api/v1")
 app.include_router(escrow_router, prefix="/api/v1")
 
 

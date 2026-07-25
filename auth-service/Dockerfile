@@ -5,7 +5,7 @@ WORKDIR /app
 COPY maci-core ./maci-core
 COPY auth-service ./auth-service
 
-RUN pip install --default-timeout=100 --no-cache-dir ./maci-core ./auth-service
+RUN pip install --upgrade pip && pip install --default-timeout=600 --retries 10 --no-cache-dir ./maci-core ./auth-service
 
 COPY auth-service/app ./app
 
