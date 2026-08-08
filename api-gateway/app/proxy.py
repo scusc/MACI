@@ -9,7 +9,7 @@ from starlette.background import BackgroundTask
 
 logger = logging.getLogger("rally.gateway.proxy")
 
-client = httpx.AsyncClient()
+client = httpx.AsyncClient(timeout=60.0)
 
 
 async def proxy_request(request: Request, target_url: str) -> Response:
