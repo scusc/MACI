@@ -129,6 +129,18 @@ spec:
           value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql3-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
         - name: REDIS_URL
           value: "redis://:gbyJCelLLLEZ6fwYQatC6iUoW2YMNJYMfAzCaEVPGys=@redis-maci-dev-456.redis.cache.windows.net:6380"
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: rally-ai-secrets
+              key: AZURE_OPENAI_ENDPOINT
+              optional: true
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rally-ai-secrets
+              key: AZURE_OPENAI_API_KEY
+              optional: true
 ---
 apiVersion: v1
 kind: Service

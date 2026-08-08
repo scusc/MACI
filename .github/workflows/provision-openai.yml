@@ -1,0 +1,81 @@
+name: Provision Azure OpenAI
+
+on:
+  workflow_dispatch:
+
+env:
+  RESOURCE_GROUP: rg-maci-dev-eastus
+  CLUSTER_NAME: aks-maci-dev-eastus
+  LOCATION: eastus
+  OAI_ACCOUNT_NAME: oai-maci-dev-eastus
+  MODEL_NAME: gpt-4o
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Azure OpenAI Resource
+        run: |
+          # Try to create the resource (this acts as an upsert)
+          az cognitiveservices account create \
+            --name ${{ env.OAI_ACCOUNT_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --location ${{ env.LOCATION }} \
+            --kind OpenAI \
+            --sku S0 \
+            --yes
+            
+      - name: Deploy gpt-4o Model
+        run: |
+          az cognitiveservices account deployment create \
+            --name ${{ env.OAI_ACCOUNT_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --deployment-name ${{ env.MODEL_NAME }} \
+            --model-name ${{ env.MODEL_NAME }} \
+            --model-version "2024-05-13" \
+            --model-format OpenAI \
+            --sku-name "Standard" \
+            --sku-capacity 1
+
+      - name: Get Azure OpenAI Endpoint and Key
+        id: oai_keys
+        run: |
+          ENDPOINT=$(az cognitiveservices account show --name ${{ env.OAI_ACCOUNT_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --query properties.endpoint -o tsv)
+          KEY=$(az cognitiveservices account keys list --name ${{ env.OAI_ACCOUNT_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --query key1 -o tsv)
+          
+          echo "::add-mask::$KEY"
+          echo "ENDPOINT=$ENDPOINT" >> $GITHUB_ENV
+          echo "API_KEY=$KEY" >> $GITHUB_ENV
+
+      - name: Set up kubelogin for non-interactive login
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.25'
+
+      - name: Get AKS Credentials
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          admin: 'false'
+          use-kubelogin: 'true'
+
+      - name: Inject Secrets to Kubernetes
+        run: |
+          kubectl create secret generic rally-ai-secrets \
+            -n rally \
+            --from-literal=AZURE_OPENAI_ENDPOINT=${{ env.ENDPOINT }} \
+            --from-literal=AZURE_OPENAI_API_KEY=${{ env.API_KEY }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+            
+      - name: Restart Asset Service
+        run: |
+          kubectl rollout restart deployment/asset-service -n rally
