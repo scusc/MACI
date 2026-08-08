@@ -105,6 +105,7 @@ async def create_payment(
         
         # Override the local mock ID with the DB ID
         response.id = payment.id
+        response.gateway_payment_id = payment.gateway_payment_id
         return response
 
     except Exception as e:
