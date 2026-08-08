@@ -155,9 +155,17 @@ async def oauth_login_or_register(
             last_name=encrypt_pii(payload["last_name"]),
             avatar_name=generate_shielded_avatar(),
             avatar_image_url=generate_avatar_image_url(email),
+            google_id=oauth_id if provider == "google" else None,
+            apple_id=oauth_id if provider == "apple" else None,
+            linkedin_id=oauth_id if provider == "linkedin" else None,
+            is_email_verified=True,  # Trust provider
         )
-        setattr(user, f"{provider}_id", oauth_id)
         db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        
+        # Explicitly set relationships to None for new users to avoid lazy-loading crashes
+        user.psychometric_profile = None
     else:
         # Update existing user's OAuth ID if missing
         if not getattr(user, f"{provider}_id"):
@@ -167,7 +175,10 @@ async def oauth_login_or_register(
 
     tokens = _create_token_response(user.id, user.email)
     
-    user.psychometric_profile = getattr(user, 'psychometric_profile', None)
+    # Only get the attribute if it hasn't been set to None above
+    if not hasattr(user, 'psychometric_profile') or isinstance(user.psychometric_profile, InstrumentedAttribute):
+        user.psychometric_profile = getattr(user, 'psychometric_profile', None)
+        
     user_resp = UserResponse.model_validate(user)
     user_resp.first_name = decrypt_pii(user_resp.first_name)
     user_resp.last_name = decrypt_pii(user_resp.last_name)
