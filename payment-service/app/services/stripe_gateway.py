@@ -53,6 +53,7 @@ async def create_payment_intent(
         logger.error(f"Stripe error: {e}")
         raise
 
+    from datetime import datetime
     return PaymentResponse(
         id=uuid.uuid4(),  # Local DB ID (to be created by routes)
         trip_id=trip_id,
@@ -63,7 +64,9 @@ async def create_payment_intent(
         gateway=PaymentGateway.STRIPE,
         status=PaymentStatus.PENDING,
         payment_type=PaymentType.DEPOSIT,
-        stripe_client_secret=intent.client_secret
+        stripe_client_secret=intent.client_secret,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
     )
 
 
