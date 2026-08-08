@@ -158,7 +158,7 @@ async def oauth_login_or_register(
             google_id=oauth_id if provider == "google" else None,
             apple_id=oauth_id if provider == "apple" else None,
             linkedin_id=oauth_id if provider == "linkedin" else None,
-            is_email_verified=True,  # Trust provider
+            is_verified=True,  # Trust provider
         )
         db.add(user)
         await db.commit()
