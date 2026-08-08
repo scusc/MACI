@@ -103,10 +103,10 @@ async def create_payment(
 
         await db.commit()
         
-        # Override the local mock ID with the DB ID
-        response.id = payment.id
-        response.gateway_payment_id = payment.gateway_payment_id
-        return response
+        return PaymentResponse(
+            id=payment.id,
+            gateway_payment_id=payment.gateway_payment_id
+        )
 
     except Exception as e:
         await db.rollback()
