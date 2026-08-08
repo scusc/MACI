@@ -24,6 +24,9 @@ jobs:
 
       - name: Create Azure OpenAI Resource
         run: |
+          # Ensure the provider is registered for the subscription
+          az provider register --namespace Microsoft.CognitiveServices --wait || true
+          
           # Try to create the resource (this acts as an upsert)
           az cognitiveservices account create \
             --name ${{ env.OAI_ACCOUNT_NAME }} \
