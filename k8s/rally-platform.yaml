@@ -171,6 +171,8 @@ spec:
         env:
         - name: DATABASE_URL
           value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql3-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+        - name: JWT_SECRET_KEY
+          value: "maci-super-secret-production-key-2026"
         - name: SERVICE_BUS_CONNECTION_STRING
           value: "Endpoint=sb://sb-maci-dev-456.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=hNXexRs6eNhZxI+vfHkt9yO50GulN9+lL+ASbDI8JP0="
 ---
@@ -215,6 +217,8 @@ spec:
         env:
         - name: DATABASE_URL
           value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql3-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+        - name: JWT_SECRET_KEY
+          value: "maci-super-secret-production-key-2026"
         - name: SERVICE_BUS_CONNECTION_STRING
           value: "Endpoint=sb://sb-maci-dev-456.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=hNXexRs6eNhZxI+vfHkt9yO50GulN9+lL+ASbDI8JP0="
 ---
