@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from maci_core.config import settings
 from maci_core.core.exceptions import DuplicateEmailError, InvalidCredentialsError
