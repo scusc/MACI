@@ -60,8 +60,8 @@ def get_azure_openai_client() -> AzureChatOpenAI:
     
     kwargs = {
         "azure_endpoint": endpoint,
-        "openai_api_version": "2024-12-01-preview",
-        "azure_deployment": "o3",
+        "openai_api_version": "2025-01-01-preview",
+        "azure_deployment": "gpt-4o",
         "temperature": 1,
     }
     
