@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, String, Integer, Date, DateTime, Text, ForeignKey,
+    Column, String, Integer, Float, Date, DateTime, Text, ForeignKey,
     UniqueConstraint, CheckConstraint, func
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,16 +18,15 @@ class Base(DeclarativeBase):
 
 
 class User(Base):
-    __tablename__ = "rally_users"
+    """Read-only reference to auth-service users table. Do NOT create/modify users here."""
+    __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=True) # Nullable for lazy users created by invites
+    password_hash = Column(String(255), nullable=True)
     display_name = Column(String(100))
-    phone = Column(String(20))
-    country_code = Column(String(2), default="US")
-    stripe_customer_id = Column(String(100))
-    razorpay_customer_id = Column(String(100))
+    kyc_status = Column(String(50), default="unverified")
+    karma_score = Column(Float, default=5.0)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -39,7 +38,7 @@ class User(Base):
 class TrustGraph(Base):
     __tablename__ = "rally_trust_graphs"
     
-    user_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     verified_domain = Column(String(255))
     instagram_handle = Column(String(100))
     linkedin_id = Column(String(100))
@@ -84,7 +83,7 @@ class SwarmPeer(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     swarm_id = Column(UUID(as_uuid=True), ForeignKey("rally_swarms.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id"), index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
     email = Column(String(255), nullable=False)
     display_name = Column(String(100))
     role = Column(String(20), nullable=False, default="peer")
@@ -166,7 +165,7 @@ class Trip(Base):
     estimated_cost_per_person = Column(Integer)
     commitment_deadline = Column(DateTime(timezone=True))
     invite_code = Column(String(20), unique=True, nullable=False, index=True)
-    organizer_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id"), index=True)
+    organizer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -178,7 +177,7 @@ class TripMember(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trip_id = Column(UUID(as_uuid=True), ForeignKey("rally_trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id"), index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
     email = Column(String(255), nullable=False)
     display_name = Column(String(100))
     role = Column(String(20), nullable=False, default="member")
@@ -197,7 +196,7 @@ class BrandConfig(Base):
     __tablename__ = "rally_brand_configs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    organizer_id = Column(UUID(as_uuid=True), ForeignKey("rally_users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    organizer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     brand_name = Column(String(100))
     logo_url = Column(String(500))
     primary_color = Column(String(20))

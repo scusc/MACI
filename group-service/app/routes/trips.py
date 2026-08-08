@@ -226,7 +226,7 @@ async def create_trip(
         trip_id=trip.id,
         user_id=organizer.id,
         email=organizer.email,
-        display_name=organizer.display_name,
+        display_name=organizer.display_name or organizer.email,
         role="organizer",
         status="committed",
         committed_at=datetime.utcnow(),
