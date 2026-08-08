@@ -81,10 +81,9 @@ async def create_payment(
             response = await stripe_gateway.create_payment_intent(
                 trip_id=body.pool_id, # Using pool_id internally
                 member_id=body.member_id,
-                amount=body.amount,
+                amount=int(body.amount),
                 platform_fee=platform_fee,
-                currency=body.currency,
-                capture_method="manual" 
+                currency=body.currency
             )
             payment.gateway_payment_id = response.stripe_client_secret.split("_secret_")[0]
         

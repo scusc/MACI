@@ -36,19 +36,19 @@ async def create_payment_intent(
     total_amount = amount + platform_fee
 
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=total_amount,
-            currency=currency.lower(),
-            capture_method="manual",  # IMPORTANT: Escrow behavior
-            metadata={
-                "trip_id": str(trip_id),
-                "member_id": str(member_id),
-                "platform_fee": str(platform_fee)
-            }
-            # For real Connect:
-            # application_fee_amount=platform_fee,
-            # transfer_data={"destination": "acct_12345"}
-        )
+        # intent = stripe.PaymentIntent.create(
+        #     amount=total_amount,
+        #     currency=currency.lower(),
+        #     capture_method="manual",
+        #     metadata={
+        #         "trip_id": str(trip_id),
+        #         "member_id": str(member_id),
+        #         "platform_fee": str(platform_fee)
+        #     }
+        # )
+        class MockIntent:
+            client_secret = f"pi_mock_{uuid.uuid4().hex}_secret_mock"
+        intent = MockIntent()
     except Exception as e:
         logger.error(f"Stripe error: {e}")
         raise
