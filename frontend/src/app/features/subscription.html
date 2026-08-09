@@ -1,38 +1,69 @@
-<div class="sub-container">
-  <div class="sub-header">
-    <span class="badge">🛡️ Verified Security & Identity Vault</span>
-    <h2>Rally Trust Passport 🛡️</h2>
-    <p>Bypass scammers, unlock Zero-Knowledge privacy vaults, and build your portable traveler reputation.</p>
+<div class="page-container" style="max-width: 900px;">
+  <!-- Feature Info -->
+  <div class="feature-info" style="margin-bottom: var(--space-8);">
+    <h4>Verified Membership</h4>
+    <p>Rally is a network based on verified identities, not anonymous profiles.</p>
+    <ul>
+      <li><strong>Why verify?</strong> To ensure every member in a travel pool or meetup is a real person.</li>
+      <li><strong>Is my data safe?</strong> We use Stripe Identity for military-grade document verification. Rally does not store your ID.</li>
+      <li><strong>What happens after?</strong> You unlock the ability to join pools, host meetups, and commit funds.</li>
+    </ul>
   </div>
 
-  <!-- Trust Level Breakdown -->
-  <div class="trust-levels-grid">
-    <!-- Level 1: Email Verified -->
-    <div class="trust-card" [class.achieved]="user()?.is_verified">
-      <div class="level-badge">LEVEL 1</div>
-      <h3>Email Verification</h3>
-      <p>Basic traveler identity verified via token email confirmation.</p>
-      <div class="status-indicator">
-        {{ user() ? '✅ Achieved' : '🔒 Pending Login' }}
+  <div class="sub-header">
+    <div class="badge">Security & Verification</div>
+    <h2>Your Verified Membership</h2>
+    <p>Track your progression from an unverified guest to a fully vetted Rally member.</p>
+  </div>
+
+  <div class="passport-tracker" *ngIf="user() as u">
+    
+    <!-- Level 1: Basic Email -->
+    <div class="passport-tier" [class.completed]="u.id">
+      <div class="tier-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div class="tier-content">
+        <h3>Level 1: Basic Account</h3>
+        <p>Email verified. You can browse pools and read discussions.</p>
+        <span class="status-label">{{ u.id ? 'Completed' : 'Pending' }}</span>
       </div>
     </div>
 
-    <!-- Level 2: Linked Social Accounts -->
-    <div class="trust-card" [class.achieved]="user()?.karma_score && user()!.karma_score >= 100">
-      <div class="level-badge">LEVEL 2</div>
-      <h3>Trust Portability</h3>
-      <p>Link Google / LinkedIn accounts to boost your Karma reputation score.</p>
-      <button class="btn-link" (click)="linkGoogleAccount()">Link Google Account</button>
+    <div class="tier-connector" [class.active]="u.id"></div>
+
+    <!-- Level 2: KYC Verified -->
+    <div class="passport-tier" [class.completed]="u.is_verified">
+      <div class="tier-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="tier-content">
+        <h3>Level 2: Identity Verified</h3>
+        <p>Government ID verified via Stripe. Unlocks pool joining, chat access, and meetups.</p>
+        <span class="status-label" *ngIf="u.is_verified">Completed</span>
+        <button class="btn-primary" *ngIf="!u.is_verified" (click)="startKYC()">Verify Identity with Stripe</button>
+      </div>
     </div>
 
-    <!-- Level 3: Stripe / Plaid Identity -->
-    <div class="trust-card pro-card" [class.achieved]="user()?.kyc_status === 'verified'">
-      <div class="level-badge gold">LEVEL 3 (HIGHEST)</div>
-      <h3>Stripe & Plaid Identity</h3>
-      <p>Full government ID check & bank account verification via Stripe Identity & Plaid API.</p>
-      <button class="btn-upgrade" (click)="startKYCVerification()">
-        {{ user()?.kyc_status === 'verified' ? '🛡️ Level 3 Verified' : 'Verify Identity via Stripe/Plaid' }}
-      </button>
+    <div class="tier-connector" [class.active]="u.is_verified"></div>
+
+    <!-- Level 3: Pro Host -->
+    <div class="passport-tier locked">
+      <div class="tier-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+      </div>
+      <div class="tier-content">
+        <h3>Level 3: Verified Host</h3>
+        <p>Connect banking to host pools and collect payouts. Requires Level 2.</p>
+        <button class="btn-secondary" disabled>Unlock Pro Hosting</button>
+      </div>
     </div>
+
+  </div>
+
+  <div *ngIf="!user()" class="empty-state">
+    <h3>Please sign in</h3>
+    <p>You need to be signed in to view your Verified Membership progression.</p>
+    <a routerLink="/login" class="btn-primary">Sign In</a>
   </div>
 </div>

@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { ToastService } from '../../core/toast.service';
+
+declare const google: any;
 
 @Component({
   selector: 'app-login',
@@ -15,6 +18,7 @@ export class Login {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private toastService = inject(ToastService);
 
   isSubmitting = signal(false);
   errorMessage = signal<string | null>(null);
@@ -38,32 +42,37 @@ export class Login {
     this.authService.login({ email, password }).subscribe({
       next: () => {
         this.isSubmitting.set(false);
+        this.toastService.success('Welcome back! You are now signed in.');
         this.router.navigate(['/feed']);
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        this.errorMessage.set(err.error?.detail || 'Invalid credentials. Please try again.');
+        this.errorMessage.set(err.error?.detail || 'Invalid credentials. Please check your email and password.');
       }
     });
   }
 
   handleGoogleOAuth() {
-    const simulatedGoogleJwt = 'simulated_google_oauth_token_' + Date.now();
-    this.authService.loginWithOAuth('google', simulatedGoogleJwt).subscribe({
-      next: () => this.router.navigate(['/feed']),
-      error: () => {
-        alert('Google OAuth: Enter GOOGLE_CLIENT_ID in Azure portal environment variables.');
-      }
-    });
-  }
-
-  handleAppleOAuth() {
-    const simulatedAppleJwt = 'simulated_apple_oauth_token_' + Date.now();
-    this.authService.loginWithOAuth('apple', simulatedAppleJwt).subscribe({
-      next: () => this.router.navigate(['/feed']),
-      error: () => {
-        alert('Apple Sign-In: Configure APPLE_CLIENT_ID in Azure portal environment variables.');
-      }
-    });
+    // Use Google Identity Services (GIS) for real OAuth
+    // This requires the Google GIS script loaded in index.html
+    try {
+      google.accounts.id.initialize({
+        client_id: '1043294374752-lumvimthmun0lv7sljjv21hbf31t48n4.apps.googleusercontent.com',
+        callback: (response: any) => {
+          this.authService.loginWithOAuth('google', response.credential).subscribe({
+            next: () => {
+              this.toastService.success('Signed in with Google successfully.');
+              this.router.navigate(['/feed']);
+            },
+            error: (err) => {
+              this.toastService.error(err.error?.detail || 'Google sign-in failed. Please try again.');
+            }
+          });
+        }
+      });
+      google.accounts.id.prompt();
+    } catch {
+      this.toastService.error('Google Sign-In is not available. Please use email login.');
+    }
   }
 }

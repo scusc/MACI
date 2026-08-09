@@ -1,0 +1,52 @@
+<div class="chat-container">
+  <div class="chat-header">
+    <div class="header-titles">
+      <h2>1-on-1 AI Concierge</h2>
+      <p>Personalized itinerary planning and travel matching</p>
+    </div>
+  </div>
+
+  <div class="chat-messages" #scrollContainer>
+    <div 
+      class="message-row" 
+      *ngFor="let msg of messages()" 
+      [class.sent]="msg.sender === 'You'">
+      
+      <div class="message-bubble" [class.ai-message]="msg.is_ai">
+        <div class="message-sender" *ngIf="msg.sender !== 'You'">
+          {{ msg.sender }}
+        </div>
+        <div class="message-content">{{ msg.text }}</div>
+        <div class="message-time" *ngIf="msg.timestamp">{{ msg.timestamp | date:'shortTime' }}</div>
+      </div>
+    </div>
+    
+    <!-- Typing Indicator -->
+    <div class="message-row" *ngIf="isTyping()">
+      <div class="message-bubble ai-message">
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-area">
+    <textarea 
+      [ngModel]="newMessage()"
+      (ngModelChange)="newMessage.set($event)"
+      (keydown)="handleKeyDown($event)"
+      placeholder="Message the AI Concierge..." 
+      class="form-textarea" 
+      rows="1"
+      style="margin: 0; min-height: 44px;"></textarea>
+      
+    <button 
+      class="btn-primary" 
+      (click)="sendMessage()" 
+      [disabled]="!newMessage().trim() || isTyping()"
+      style="white-space: nowrap;">
+      Send
+    </button>
+  </div>
+</div>

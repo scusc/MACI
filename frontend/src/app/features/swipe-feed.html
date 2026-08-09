@@ -1,4 +1,15 @@
-<div class="feed-wrapper">
+<div class="page-container">
+  <!-- Feature Info -->
+  <div class="feature-info">
+    <h4>Travel Pools</h4>
+    <p>Discover and join group travel experiences organized by the community.</p>
+    <ul>
+      <li>Browse live travel pools tailored to your preferences.</li>
+      <li>Commit funds securely to reserve your spot (Verified Membership required).</li>
+      <li>Engage in real-time group chat to coordinate details before departure.</li>
+    </ul>
+  </div>
+
   <!-- Feed Toolbar -->
   <div class="feed-toolbar">
     <div class="search-box">
@@ -6,14 +17,15 @@
         type="text" 
         [ngModel]="searchDestination()" 
         (ngModelChange)="searchDestination.set($event)" 
-        placeholder="🔍 Search destinations (e.g. Bali, Tokyo, Paris)..." 
+        class="form-input"
+        placeholder="Search destinations (e.g. Bali, Tokyo, Paris)..." 
         (keyup.enter)="onSearch()"
       />
-      <button (click)="onSearch()" class="btn-search">Search</button>
+      <button (click)="onSearch()" class="btn-secondary">Search</button>
     </div>
 
-    <button (click)="openCreateModal()" class="btn-create-post">
-      ✨ + Create Post & Travel Pool
+    <button (click)="openCreateModal()" class="btn-primary">
+      Create Pool
     </button>
   </div>
 
@@ -21,18 +33,18 @@
   <div class="feed-container">
     <div *ngIf="isLoading()" class="loading-state">
       <div class="spinner"></div>
-      <p>Fetching real travel pools & live data...</p>
+      <p>Fetching travel pools and live data...</p>
     </div>
 
     <div *ngIf="!isLoading() && isEmpty()" class="empty-state">
       <h3>No travel pools found matching "{{ searchDestination() }}"</h3>
-      <p>Be the first traveler to create a post with real live travel search!</p>
-      <button (click)="openCreateModal()" class="btn-primary">Create Travel Pool</button>
+      <p>Be the first traveler to create a pool for this destination.</p>
+      <button (click)="openCreateModal()" class="btn-primary">Create Pool</button>
     </div>
 
-    <div *ngIf="!isLoading() && currentTrip() as trip" class="swipe-card">
+    <div *ngIf="!isLoading() && currentTrip() as trip" class="swipe-card card">
       <div class="card-media">
-        <img [src]="trip.media_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000'" alt="Travel Image" />
+        <img [src]="trip.media_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000'" alt="Travel destination" />
         <div class="destination-badge">{{ trip.destination }}</div>
         <div class="status-tag" [class.active]="trip.status === 'collecting'">
           {{ trip.status | uppercase }}
@@ -48,35 +60,52 @@
         <p class="description">{{ trip.description }}</p>
 
         <div class="trip-meta">
-          <div class="meta-item">📅 {{ trip.start_date | date:'mediumDate' }} - {{ trip.end_date | date:'mediumDate' }}</div>
-          <div class="meta-item">👥 {{ trip.members.length || 1 }} Members Joined</div>
-          <div class="meta-item">🎟️ Code: {{ trip.invite_code }}</div>
+          <div class="meta-item">Dates: {{ trip.start_date | date:'mediumDate' }} - {{ trip.end_date | date:'mediumDate' }}</div>
+          <div class="meta-item">Members: {{ trip.members.length || 1 }} Joined</div>
+          <div class="meta-item">Invite Code: {{ trip.invite_code }}</div>
         </div>
 
         <div class="members-preview">
-          <span class="label">Members:</span>
-          <span *ngFor="let m of trip.members" class="member-chip" [class.organizer]="m.role === 'organizer'">
+          <span class="label">Roster:</span>
+          <span *ngFor="let m of trip.members" class="badge" [class.organizer]="m.role === 'organizer'">
             {{ m.display_name || m.email.split('@')[0] }} ({{ m.role }})
           </span>
         </div>
 
         <div class="card-actions">
-          <button class="btn-prev" (click)="prevCard()" [disabled]="currentIndex() === 0">◀ Prev</button>
+          <button class="btn-secondary" (click)="prevCard()" [disabled]="currentIndex() === 0">Previous</button>
           
-          <button class="btn-join" (click)="joinPool(trip)">
-            ⚡ Join & Commit Fund (${{ trip.estimated_cost_per_person }})
+          <button class="btn-primary" (click)="joinPool(trip)">
+            Join & Commit (${{ trip.estimated_cost_per_person }})
           </button>
           
-          <button class="btn-chat" (click)="openChat(trip.id)">
-            💬 Live Group Chat
+          <button class="btn-secondary" (click)="openChat(trip.id)">
+            Live Chat
           </button>
 
-          <button *ngIf="authService.currentUser()?.id === trip.organizer_id" class="btn-delete" (click)="deletePost(trip.id)">
-            🗑️ Delete
+          <button *ngIf="authService.currentUser()?.id === trip.organizer_id" class="btn-danger" (click)="confirmDelete(trip.id)">
+            Delete
           </button>
 
-          <button class="btn-next" (click)="nextCard()" [disabled]="currentIndex() >= trips().length - 1">Next ▶</button>
+          <button class="btn-secondary" (click)="nextCard()" [disabled]="currentIndex() >= trips().length - 1">Next</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Delete Confirmation -->
+  <div *ngIf="tripToDelete() !== null" class="modal-overlay">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>Confirm Deletion</h2>
+        <button class="btn-close" (click)="cancelDelete()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this travel pool? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
+        <button class="btn-danger" (click)="executeDelete()">Delete</button>
       </div>
     </div>
   </div>
@@ -85,73 +114,75 @@
   <div *ngIf="showCreateModal()" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>✨ Create Post & Live Travel Pool</h2>
-        <button class="btn-close" (click)="closeCreateModal()">×</button>
+        <h2>Create Travel Pool</h2>
+        <button class="btn-close" (click)="closeCreateModal()">&times;</button>
       </div>
 
       <div class="modal-body">
         <div class="live-search-section">
-          <h3>1. Real-Time Travel API Search</h3>
-          <div class="search-form-row">
+          <h3>1. Real-Time Travel Search</h3>
+          <div class="form-row">
             <div class="form-group">
-              <label>Origin</label>
-              <input type="text" [ngModel]="postOrigin()" (ngModelChange)="postOrigin.set($event)" placeholder="e.g. NYC, JFK" />
+              <label class="form-label">Origin</label>
+              <input type="text" [ngModel]="postOrigin()" (ngModelChange)="postOrigin.set($event)" class="form-input" placeholder="e.g. NYC" />
             </div>
             <div class="form-group">
-              <label>Destination</label>
-              <input type="text" [ngModel]="postDestination()" (ngModelChange)="postDestination.set($event)" placeholder="e.g. Bali, Tokyo, Paris" />
+              <label class="form-label">Destination</label>
+              <input type="text" [ngModel]="postDestination()" (ngModelChange)="postDestination.set($event)" class="form-input" placeholder="e.g. Bali" />
             </div>
             <div class="form-group">
-              <label>Start Date</label>
-              <input type="date" [ngModel]="postStartDate()" (ngModelChange)="postStartDate.set($event)" />
+              <label class="form-label">Start Date</label>
+              <input type="date" [ngModel]="postStartDate()" (ngModelChange)="postStartDate.set($event)" class="form-input" />
             </div>
             <div class="form-group">
-              <label>End Date</label>
-              <input type="date" [ngModel]="postEndDate()" (ngModelChange)="postEndDate.set($event)" />
+              <label class="form-label">End Date</label>
+              <input type="date" [ngModel]="postEndDate()" (ngModelChange)="postEndDate.set($event)" class="form-input" />
             </div>
           </div>
-          <button (click)="performLiveTravelSearch()" class="btn-api-search" [disabled]="isSearchingTravel()">
-            {{ isSearchingTravel() ? 'Querying Live APIs...' : '🔍 Search Live Flights & Hotels' }}
+          <button (click)="performLiveTravelSearch()" class="btn-secondary" [disabled]="isSearchingTravel()" style="width: 100%; margin-top: var(--space-4);">
+            {{ isSearchingTravel() ? 'Querying APIs...' : 'Search Live Options' }}
           </button>
 
           <!-- Search Results Preview -->
-          <div *ngIf="travelSearchResult() as res" class="search-results-preview">
-            <div *ngIf="res.weather" class="weather-box">
-              🌤️ <strong>Live Weather in {{ res.destination }}:</strong> {{ res.weather.temp_celsius }}°C, {{ res.weather.condition }} (Wind: {{ res.weather.wind_speed_kmh }} km/h)
+          <div *ngIf="travelSearchResult() as res" class="search-results-preview" style="margin-top: var(--space-4); padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-md);">
+            <div *ngIf="res.weather" class="text-sm" style="margin-bottom: var(--space-2);">
+              <strong>Live Weather in {{ res.destination }}:</strong> {{ res.weather.temp_celsius }}°C, {{ res.weather.condition }}
             </div>
 
             <div class="flights-list">
-              <h4>Available Live Flight Options:</h4>
-              <div *ngFor="let f of res.flights" class="flight-item" [class.selected]="selectedFlight()?.id === f.id" (click)="selectedFlight.set(f)">
-                <div><strong>{{ f.airline }} ({{ f.flight_number }})</strong>: {{ f.departure_airport }} ➔ {{ f.arrival_airport }} ({{ f.duration }})</div>
-                <div class="flight-price">${{ f.price_usd }} USD</div>
+              <h4 class="text-sm font-medium" style="margin-bottom: var(--space-2);">Available Live Flight Options:</h4>
+              <div *ngFor="let f of res.flights" class="flight-item" style="padding: var(--space-2); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); margin-bottom: var(--space-2); cursor: pointer;"
+                   [class.selected]="selectedFlight()?.id === f.id" (click)="selectedFlight.set(f)" [style.border-color]="selectedFlight()?.id === f.id ? 'var(--gray-900)' : 'var(--gray-200)'">
+                <div style="font-size: var(--text-sm);"><strong>{{ f.airline }}</strong>: {{ f.departure_airport }} - {{ f.arrival_airport }}</div>
+                <div style="font-size: var(--text-sm); color: var(--gray-500);">${{ f.price_usd }} USD</div>
               </div>
             </div>
           </div>
         </div>
 
+        <div class="divider"><span>Details</span></div>
+
         <div class="post-details-section">
-          <h3>2. Post & Pool Details</h3>
           <div class="form-group">
-            <label>Post Title</label>
-            <input type="text" [ngModel]="postTitle()" (ngModelChange)="postTitle.set($event)" placeholder="e.g. 7-Day Luxury Nomad Co-Living in Uluwatu" />
+            <label class="form-label">Pool Title</label>
+            <input type="text" [ngModel]="postTitle()" (ngModelChange)="postTitle.set($event)" class="form-input" placeholder="e.g. 7-Day Retreat in Bali" />
           </div>
 
           <div class="form-group">
-            <label>Trip Description</label>
-            <textarea rows="3" [ngModel]="postDescription()" (ngModelChange)="postDescription.set($event)" placeholder="Describe the vibe, activities, and who should join..."></textarea>
+            <label class="form-label">Description</label>
+            <textarea rows="3" [ngModel]="postDescription()" (ngModelChange)="postDescription.set($event)" class="form-textarea" placeholder="Describe the vibe, activities, and who should join..."></textarea>
           </div>
 
           <div class="form-group">
-            <label>Estimated Share Cost Per Person ($USD)</label>
-            <input type="number" [ngModel]="postCost()" (ngModelChange)="postCost.set($event)" />
+            <label class="form-label">Estimated Cost Per Person ($USD)</label>
+            <input type="number" [ngModel]="postCost()" (ngModelChange)="postCost.set($event)" class="form-input" />
           </div>
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeCreateModal()">Cancel</button>
-        <button class="btn-primary" (click)="submitNewPost()">Publish Post & Pool</button>
+        <button class="btn-primary" (click)="submitNewPost()">Publish Pool</button>
       </div>
     </div>
   </div>

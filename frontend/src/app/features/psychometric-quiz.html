@@ -1,77 +1,96 @@
-<div class="quiz-container">
-  <div class="quiz-card">
-    <div class="header">
-      <span class="badge">AI Psychometric Calibration</span>
-      <h2>Step {{ step }} of 5</h2>
-      <div class="progress-bar">
-        <div class="progress-fill" [style.width.%]="step * 20"></div>
+<div class="page-container" style="max-width: 800px;">
+  <!-- INTRO VIEW -->
+  <div *ngIf="currentView() === 'intro'" class="card intro-card">
+    <div class="intro-header">
+      <span class="badge">Travel Calibration</span>
+      <h1>Find Your Travel Archetype</h1>
+      <p class="subtitle">Because a bad travel group ruins a good destination.</p>
+    </div>
+    
+    <div class="intro-content">
+      <div class="feature-info">
+        <h4>Why do we need this?</h4>
+        <p>Rally doesn't just match you with random people going to the same place. We build highly compatible "Pools" based on psychological profiles.</p>
+        <ul>
+          <li><strong>Pacing Match:</strong> Align with people who share your energy levels.</li>
+          <li><strong>Budget Alignment:</strong> Avoid friction over dinner spots and accommodations.</li>
+          <li><strong>Conflict Resolution:</strong> Group dynamics built for harmony under stress.</li>
+        </ul>
+      </div>
+      
+      <p style="margin-bottom: var(--space-6); color: var(--gray-600);">The assessment takes 2 minutes and permanently improves your Rally matching algorithm.</p>
+      
+      <button class="btn-primary" (click)="startQuiz()" style="width: 100%; padding: var(--space-4); font-size: var(--text-lg);">
+        Start Assessment
+      </button>
+    </div>
+  </div>
+
+  <!-- QUIZ VIEW -->
+  <div *ngIf="currentView() === 'quiz'" class="card quiz-card">
+    <div class="quiz-header">
+      <div class="badge">Question {{ step() + 1 }} of {{ questions.length }}</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width]="((step() + 1) / questions.length) * 100 + '%'"></div>
+        </div>
       </div>
     </div>
 
-    <!-- Step 1: Social Battery -->
-    <div *ngIf="step === 1" class="quiz-step">
-      <h3>⚡ Social Battery & Recharge Time</h3>
-      <p>How do you recharge after a high-energy group excursion?</p>
-      <div class="slider-box">
-        <span class="label">Quiet Solo Downtime (1)</span>
-        <input type="range" min="1" max="10" [(ngModel)]="socialBattery" />
-        <span class="label">Non-stop Group Energy (10)</span>
+    <div class="quiz-content" *ngIf="questions[step()] as q">
+      <h2 class="question-text">{{ q.question }}</h2>
+      
+      <div class="context-box">
+        <strong>Why we ask:</strong> {{ q.context }}
       </div>
-      <div class="current-val">Selected Value: <strong>{{ socialBattery }}/10</strong></div>
+
+      <div class="options-box">
+        <label *ngFor="let opt of q.options" class="option-label">
+          <input 
+            type="radio" 
+            [name]="q.id" 
+            [value]="opt.value" 
+            [checked]="answers()[step()] === opt.value"
+            (change)="updateAnswer($any($event.target).value)"
+            class="custom-radio"
+          >
+          <span class="option-text">{{ opt.label }}</span>
+        </label>
+      </div>
     </div>
 
-    <!-- Step 2: Travel Pacing -->
-    <div *ngIf="step === 2" class="quiz-step">
-      <h3>🏃 Travel Pacing & Rhythm</h3>
-      <p>What is your ideal daily travel speed?</p>
-      <div class="slider-box">
-        <span class="label">Slow & Relaxed (1)</span>
-        <input type="range" min="1" max="10" [(ngModel)]="pacing" />
-        <span class="label">Action-Packed Sprint (10)</span>
-      </div>
-      <div class="current-val">Selected Value: <strong>{{ pacing }}/10</strong></div>
+    <div class="quiz-footer">
+      <button class="btn-secondary" (click)="prev()" [disabled]="step() === 0">Back</button>
+      <button class="btn-primary" (click)="next()" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Analyzing...' : (step() === questions.length - 1 ? 'Complete Assessment' : 'Next Question') }}
+      </button>
     </div>
+  </div>
 
-    <!-- Step 3: Budget Philosophy -->
-    <div *ngIf="step === 3" class="quiz-step">
-      <h3>💰 Budget Philosophy</h3>
-      <p>How do you prefer allocating your daily travel budget?</p>
-      <div class="slider-box">
-        <span class="label">Strict Frugal Nomad (1)</span>
-        <input type="range" min="1" max="10" [(ngModel)]="budgetTolerance" />
-        <span class="label">Boutique Luxury Splurge (10)</span>
-      </div>
-      <div class="current-val">Selected Value: <strong>{{ budgetTolerance }}/10</strong></div>
+  <!-- RESULTS VIEW -->
+  <div *ngIf="currentView() === 'results'" class="card results-card">
+    <div class="results-header">
+      <span class="badge badge-success">Calibration Complete</span>
+      <h1>{{ archetype() }}</h1>
+      <p class="subtitle">Your psychological travel profile has been established.</p>
     </div>
-
-    <!-- Step 4: Spontaneity -->
-    <div *ngIf="step === 4" class="quiz-step">
-      <h3>🗺️ Spontaneity vs Planning</h3>
-      <p>How do you approach trip itineraries?</p>
-      <div class="slider-box">
-        <span class="label">Strict Hour-by-Hour Plan (1)</span>
-        <input type="range" min="1" max="10" [(ngModel)]="spontaneity" />
-        <span class="label">100% Spontaneous Wanderer (10)</span>
+    
+    <div class="results-content">
+      <div class="alert alert-success" style="margin-bottom: var(--space-6);">
+        Your matching algorithm is now tuned. You will primarily see Travel Pools hosted by highly compatible travelers.
       </div>
-      <div class="current-val">Selected Value: <strong>{{ spontaneity }}/10</strong></div>
-    </div>
-
-    <!-- Step 5: Conflict Resolution -->
-    <div *ngIf="step === 5" class="quiz-step">
-      <h3>🤝 Conflict Resolution Style</h3>
-      <p>When unexpected travel friction occurs, how do you handle it?</p>
-      <div class="slider-box">
-        <span class="label">Quiet Diplomatic Adaptor (1)</span>
-        <input type="range" min="1" max="10" [(ngModel)]="conflictStyle" />
-        <span class="label">Direct Problem Solver (10)</span>
+      
+      <div class="feature-info">
+        <h4>What this means for you:</h4>
+        <ul>
+          <li>Your Verified Membership now reflects a calibrated status.</li>
+          <li>Hosts can see your archetype when reviewing join requests.</li>
+          <li>The AI Concierge will tailor itinerary suggestions to this profile.</li>
+        </ul>
       </div>
-      <div class="current-val">Selected Value: <strong>{{ conflictStyle }}/10</strong></div>
-    </div>
-
-    <div class="controls">
-      <button class="btn-sec" (click)="prevStep()" [disabled]="step === 1">Back</button>
-      <button class="btn-primary" (click)="nextStep()" [disabled]="isSubmitting">
-        {{ step === 5 ? (isSubmitting ? 'Calibrating AI...' : 'Complete Quiz') : 'Next' }}
+      
+      <button class="btn-primary" (click)="goToFeed()" style="width: 100%; padding: var(--space-4); font-size: var(--text-lg);">
+        Explore Travel Pools
       </button>
     </div>
   </div>

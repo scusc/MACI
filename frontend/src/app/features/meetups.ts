@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 export interface Meetup {
   id: string;
@@ -28,6 +29,7 @@ export class Meetups implements OnInit {
   private http = inject(HttpClient);
   public authService = inject(AuthService);
   private router = inject(Router);
+  private toastService = inject(ToastService);
 
   meetups = signal<Meetup[]>([]);
   isLoading = signal(false);
@@ -47,6 +49,7 @@ export class Meetups implements OnInit {
   selectedMeetup = signal<Meetup | null>(null);
   inputPin = signal('');
   qrPayload = signal('');
+  isLoadingQr = signal(false);
 
   ngOnInit() {
     this.loadMeetups();
@@ -60,6 +63,7 @@ export class Meetups implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
+        this.toastService.error('Failed to load meetups.');
         this.isLoading.set(false);
       }
     });
@@ -67,6 +71,7 @@ export class Meetups implements OnInit {
 
   openCreateModal() {
     if (!this.authService.getToken()) {
+      this.toastService.info('Please sign in to create a meetup.');
       this.router.navigate(['/login']);
       return;
     }
@@ -86,14 +91,22 @@ export class Meetups implements OnInit {
         if (res && res.length > 0) {
           this.meetupLatitude.set(parseFloat(res[0].lat));
           this.meetupLongitude.set(parseFloat(res[0].lon));
-          alert(`📍 Location verified: ${res[0].display_name.split(',')[0]} (${res[0].lat}, ${res[0].lon})`);
+          this.toastService.success(`Location verified: ${res[0].display_name.split(',')[0]}`);
+        } else {
+          this.toastService.warning('Location not found. Please try a different search term.');
         }
+      },
+      error: () => {
+        this.toastService.error('Failed to search location.');
       }
     });
   }
 
   createMeetup() {
-    if (!this.meetupTitle()) return;
+    if (!this.meetupTitle()) {
+      this.toastService.warning('Meetup title is required.');
+      return;
+    }
     const currentUser = this.authService.currentUser();
     if (!currentUser) return;
 
@@ -110,25 +123,41 @@ export class Meetups implements OnInit {
       next: () => {
         this.closeCreateModal();
         this.loadMeetups();
-        alert('🎉 Micro-meetup created successfully with 4-digit verification PIN!');
+        this.toastService.success('Micro-meetup created successfully.');
       },
       error: (err) => {
-        alert('Failed to create meetup: ' + (err.error?.detail || 'Identity verification required.'));
+        this.toastService.error(err.error?.detail || 'Identity verification required to create meetups.');
       }
     });
   }
 
   openCheckIn(m: Meetup) {
+    if (!this.authService.getToken()) {
+      this.toastService.info('Please sign in to check in.');
+      this.router.navigate(['/login']);
+      return;
+    }
+    
     this.selectedMeetup.set(m);
     this.showCheckInModal.set(true);
     this.inputPin.set('');
+    this.isLoadingQr.set(true);
     
+    const userId = this.authService.currentUser()?.id;
+    if (!userId) return;
+
     // Fetch QR Code payload
     this.http.get<{qr_payload: string}>(`${environment.apiUrl}/meetups/${m.id}/qr-code`, {
-      headers: { 'x-user-id': this.authService.currentUser()?.id || 'simulated' }
+      headers: { 'x-user-id': userId }
     }).subscribe({
-      next: (res) => this.qrPayload.set(res.qr_payload),
-      error: () => this.qrPayload.set('MOCK_QR_' + m.id)
+      next: (res) => {
+        this.qrPayload.set(res.qr_payload);
+        this.isLoadingQr.set(false);
+      },
+      error: () => {
+        this.toastService.error('Failed to load check-in QR code.');
+        this.isLoadingQr.set(false);
+      }
     });
   }
 
@@ -142,15 +171,20 @@ export class Meetups implements OnInit {
     const currentUser = this.authService.currentUser();
     if (!m || !currentUser) return;
 
+    if (!this.inputPin()) {
+      this.toastService.warning('Please enter the 4-digit PIN.');
+      return;
+    }
+
     this.http.post(`${environment.apiUrl}/meetups/${m.id}/check-in`, null, {
       params: { user_id: currentUser.id, pin: this.inputPin() }
     }).subscribe({
       next: () => {
-        alert('✅ Physical check-in verified via Host PIN! Micro-escrow released & +5 Karma awarded.');
+        this.toastService.success('Physical check-in verified! Escrow released.');
         this.closeCheckIn();
       },
       error: (err) => {
-        alert('Check-in failed: ' + (err.error?.detail || 'Invalid Host PIN.'));
+        this.toastService.error(err.error?.detail || 'Invalid Host PIN.');
       }
     });
   }

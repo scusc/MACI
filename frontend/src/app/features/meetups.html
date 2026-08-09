@@ -1,37 +1,48 @@
-<div class="meetups-container">
-  <div class="header-section">
-    <div>
-      <span class="badge">📍 Local Micro-Commitments</span>
-      <h1>Micro-Meetups & Physical Check-Ins</h1>
-      <p>Spontaneous local meetups with anti-flake micro-escrows and PIN/QR physical check-in verification.</p>
+<div class="page-container">
+  <!-- Feature Info -->
+  <div class="feature-info">
+    <h4>Micro-Meetups</h4>
+    <p>Connect with travelers in your area through low-friction, high-intent physical meetups.</p>
+    <ul>
+      <li>Discover local events hosted by vetted Rally members.</li>
+      <li>Escrow system ensures high attendance rates (no-shows forfeit their escrow).</li>
+      <li>Physical check-in via Host PIN validates your presence and builds your Verified Membership.</li>
+    </ul>
+  </div>
+
+  <div class="feed-toolbar">
+    <div class="search-box">
+      <h1 class="page-title">Local Meetups</h1>
     </div>
-    <button (click)="openCreateModal()" class="btn-primary">+ Create Micro-Meetup</button>
+    <button (click)="openCreateModal()" class="btn-primary">Host a Meetup</button>
   </div>
 
-  <div *ngIf="isLoading()" class="loading-box">
-    <div class="spinner"></div>
-    <p>Searching active micro-meetups near your location...</p>
-  </div>
+  <div class="feed-container" style="display: block;">
+    <div *ngIf="isLoading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Finding meetups near you...</p>
+    </div>
 
-  <!-- Meetups Grid -->
-  <div *ngIf="!isLoading()" class="meetups-grid">
-    <div *ngFor="let m of meetups()" class="meetup-card">
-      <div class="card-header">
-        <span class="escrow-pill">🛡️ ${{ m.escrow_amount_cents / 100 }} Escrow Hold</span>
-        <span class="time-tag">📅 {{ m.start_time | date:'short' }}</span>
-      </div>
+    <div *ngIf="!isLoading() && meetups().length === 0" class="empty-state">
+      <h3>No meetups found</h3>
+      <p>Be the first to host a micro-meetup in your area.</p>
+      <button (click)="openCreateModal()" class="btn-primary">Host a Meetup</button>
+    </div>
 
-      <h3>{{ m.title }}</h3>
-      <p class="description">{{ m.description }}</p>
-
-      <div class="location-box">
-        📍 Coords: {{ m.latitude.toFixed(4) }}, {{ m.longitude.toFixed(4) }} (OpenStreetMap Verified)
-      </div>
-
-      <div class="card-footer">
-        <button (click)="openCheckIn(m)" class="btn-checkin">
-          🔑 Verify Presence & Check-In (PIN / QR)
-        </button>
+    <div class="meetups-grid" *ngIf="!isLoading()">
+      <div *ngFor="let m of meetups()" class="meetup-card card">
+        <div class="meetup-header">
+          <div class="badge">Escrow: ${{ m.escrow_amount_cents / 100 }}</div>
+          <div class="meetup-time">{{ m.start_time | date:'short' }}</div>
+        </div>
+        
+        <h3 class="meetup-title">{{ m.title }}</h3>
+        <p class="meetup-desc">{{ m.description }}</p>
+        
+        <div class="meetup-footer">
+          <div class="meetup-location">Loc: {{ m.latitude | number:'1.2-2' }}, {{ m.longitude | number:'1.2-2' }}</div>
+          <button class="btn-primary btn-sm" (click)="openCheckIn(m)">Check-In</button>
+        </div>
       </div>
     </div>
   </div>
@@ -40,78 +51,87 @@
   <div *ngIf="showCreateModal()" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>✨ Host a Micro-Meetup</h2>
-        <button class="btn-close" (click)="closeCreateModal()">×</button>
+        <h2>Host a Micro-Meetup</h2>
+        <button class="btn-close" (click)="closeCreateModal()">&times;</button>
       </div>
 
       <div class="modal-body">
         <div class="form-group">
-          <label>Meetup Title</label>
-          <input type="text" [ngModel]="meetupTitle()" (ngModelChange)="meetupTitle.set($event)" placeholder="e.g. Sunset Cocktails & Nomad Co-Working" />
+          <label class="form-label">Meetup Title</label>
+          <input type="text" [ngModel]="meetupTitle()" (ngModelChange)="meetupTitle.set($event)" class="form-input" placeholder="e.g. Sunset drinks at Potato Head" />
         </div>
 
         <div class="form-group">
-          <label>Location Search (OpenStreetMap Geocoded)</label>
-          <div class="input-with-btn">
-            <input type="text" [ngModel]="meetupLocationName()" (ngModelChange)="meetupLocationName.set($event)" placeholder="City or Venue name..." />
-            <button (click)="searchLocationCoords()" class="btn-search-coords">Verify Location</button>
-          </div>
+          <label class="form-label">Description</label>
+          <textarea rows="3" [ngModel]="meetupDescription()" (ngModelChange)="meetupDescription.set($event)" class="form-textarea" placeholder="What's the plan?"></textarea>
         </div>
 
-        <div class="form-group">
-          <label>Description</label>
-          <textarea rows="3" [ngModel]="meetupDescription()" (ngModelChange)="meetupDescription.set($event)" placeholder="What is the plan and vibe?"></textarea>
-        </div>
+        <div class="divider"><span>Location & Time</span></div>
 
         <div class="form-row">
           <div class="form-group">
-            <label>Start Time</label>
-            <input type="datetime-local" [ngModel]="meetupStartTime()" (ngModelChange)="meetupStartTime.set($event)" />
+            <label class="form-label">Search Location</label>
+            <div style="display: flex; gap: var(--space-2);">
+              <input type="text" [ngModel]="meetupLocationName()" (ngModelChange)="meetupLocationName.set($event)" class="form-input" placeholder="e.g. Seminyak Beach" />
+              <button class="btn-secondary" (click)="searchLocationCoords()">Verify</button>
+            </div>
           </div>
+          
           <div class="form-group">
-            <label>Anti-Flake Escrow ($USD)</label>
-            <input type="number" [ngModel]="meetupEscrowDollars()" (ngModelChange)="meetupEscrowDollars.set($event)" />
+            <label class="form-label">Date & Time</label>
+            <input type="datetime-local" [ngModel]="meetupStartTime()" (ngModelChange)="meetupStartTime.set($event)" class="form-input" />
           </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">No-Show Escrow ($USD)</label>
+          <input type="number" [ngModel]="meetupEscrowDollars()" (ngModelChange)="meetupEscrowDollars.set($event)" class="form-input" />
+          <span class="form-hint">Required commitment to filter out flakes. Fully refunded upon physical check-in.</span>
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeCreateModal()">Cancel</button>
-        <button class="btn-primary" (click)="createMeetup()">Publish Micro-Meetup</button>
+        <button class="btn-primary" (click)="createMeetup()">Create Meetup</button>
       </div>
     </div>
   </div>
 
   <!-- Check-In Modal -->
-  <div *ngIf="showCheckInModal()" class="modal-overlay">
-    <div class="modal-card">
+  <div *ngIf="showCheckInModal() && selectedMeetup() as m" class="modal-overlay">
+    <div class="modal-card" style="max-width: 400px;">
       <div class="modal-header">
-        <h2>🔑 Physical Presence Verification</h2>
-        <button class="btn-close" (click)="closeCheckIn()">×</button>
+        <h2>Physical Check-In</h2>
+        <button class="btn-close" (click)="closeCheckIn()">&times;</button>
       </div>
 
-      <div *ngIf="selectedMeetup() as m" class="modal-body">
-        <p>Verifying check-in for: <strong>{{ m.title }}</strong></p>
+      <div class="modal-body text-center">
+        <h3 style="margin-bottom: var(--space-2);">{{ m.title }}</h3>
+        <p style="color: var(--gray-500); font-size: var(--text-sm); margin-bottom: var(--space-6);">
+          Ask the host for the 4-digit PIN to verify your attendance and release your escrow.
+        </p>
 
-        <div class="pin-check-section">
-          <h3>Option 1: Enter Host 4-Digit PIN</h3>
-          <p class="hint">Ask the host at the venue for their 4-digit check-in PIN.</p>
-          <div class="pin-input-box">
-            <input type="text" maxlength="4" [ngModel]="inputPin()" (ngModelChange)="inputPin.set($event)" placeholder="1234" />
-            <button (click)="submitPinCheckIn()" class="btn-submit-pin">Submit PIN</button>
-          </div>
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label">Host PIN</label>
+          <input type="text" [ngModel]="inputPin()" (ngModelChange)="inputPin.set($event)" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" style="text-align: center; font-size: var(--text-2xl); letter-spacing: 0.5em;" />
         </div>
 
-        <div class="qr-check-section">
-          <h3>Option 2: QR Code Scan String</h3>
-          <div class="qr-payload-box">
-            <code>{{ qrPayload() }}</code>
-          </div>
+        <div class="divider"><span>Or scan host's code</span></div>
+        
+        <div *ngIf="isLoadingQr()" class="loading-state" style="padding: var(--space-4);">
+          <div class="spinner"></div>
+        </div>
+
+        <div *ngIf="!isLoadingQr() && qrPayload()" style="background: var(--gray-50); padding: var(--space-6); border-radius: var(--radius-md); border: var(--border);">
+          <p style="font-family: monospace; word-break: break-all; font-size: var(--text-xs); color: var(--gray-500);">
+            QR DATA: {{ qrPayload() }}
+          </p>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button class="btn-secondary" (click)="closeCheckIn()">Close</button>
+        <button class="btn-secondary" (click)="closeCheckIn()">Cancel</button>
+        <button class="btn-primary" (click)="submitPinCheckIn()">Verify Check-In</button>
       </div>
     </div>
   </div>

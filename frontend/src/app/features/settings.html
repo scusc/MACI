@@ -1,62 +1,69 @@
-<div class="settings-container">
-  <div class="settings-card">
-    <div class="settings-header">
-      <h2>⚙️ Account Options & Profile Settings</h2>
-      <p>Manage your traveler identity, origin preferences, and Trust Passport security.</p>
-    </div>
+<div class="page-container" style="max-width: 800px;">
+  <div class="section-header">
+    <h1>Account Settings</h1>
+    <p>Manage your traveler identity, preferences, and personal information.</p>
+  </div>
 
-    <div *ngIf="successMsg()" class="alert alert-success">{{ successMsg() }}</div>
-    <div *ngIf="errorMsg()" class="alert alert-error">{{ errorMsg() }}</div>
-
+  <div class="card">
     <form (ngSubmit)="saveProfile()" class="settings-form">
       <div class="form-row">
         <div class="form-group">
-          <label>First Name</label>
-          <input type="text" [ngModel]="firstName()" (ngModelChange)="firstName.set($event)" name="firstName" required />
+          <label class="form-label">First Name</label>
+          <input type="text" [ngModel]="firstName()" (ngModelChange)="firstName.set($event)" name="firstName" class="form-input" required />
         </div>
         <div class="form-group">
-          <label>Last Name</label>
-          <input type="text" [ngModel]="lastName()" (ngModelChange)="lastName.set($event)" name="lastName" required />
+          <label class="form-label">Last Name</label>
+          <input type="text" [ngModel]="lastName()" (ngModelChange)="lastName.set($event)" name="lastName" class="form-input" required />
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" [value]="user()?.email || ''" disabled class="disabled-input" />
-        <span class="hint">Email address cannot be changed once verified.</span>
+      <div class="form-group" style="margin-bottom: var(--space-6);">
+        <label class="form-label">Email Address</label>
+        <input type="email" [value]="user()?.email || ''" disabled class="form-input" />
+        <span class="form-hint">Email address cannot be changed once verified.</span>
       </div>
 
-      <div class="form-group">
-        <label>Preferred Origin Airport (IATA)</label>
-        <input type="text" [ngModel]="originAirport()" (ngModelChange)="originAirport.set($event)" name="originAirport" placeholder="e.g. JFK, SFO, DEL, LHR" />
-      </div>
+      <div class="divider"><span>Travel Preferences</span></div>
 
       <div class="form-group">
-        <label>Traveler Bio</label>
-        <textarea rows="3" [ngModel]="bio()" (ngModelChange)="bio.set($event)" name="bio" placeholder="Tell fellow travelers about your travel style & skills..."></textarea>
+        <label class="form-label">Preferred Origin Airport (IATA)</label>
+        <input type="text" [ngModel]="originAirport()" (ngModelChange)="originAirport.set($event)" name="originAirport" class="form-input" placeholder="e.g. JFK, SFO, DEL, LHR" />
       </div>
 
       <div class="form-group">
-        <label>Avatar Media URL</label>
-        <input type="url" [ngModel]="avatarUrl()" (ngModelChange)="avatarUrl.set($event)" name="avatarUrl" placeholder="https://images.unsplash.com/..." />
+        <label class="form-label">Traveler Bio</label>
+        <textarea rows="4" [ngModel]="bio()" (ngModelChange)="bio.set($event)" name="bio" class="form-textarea" placeholder="Tell fellow travelers about your travel style & skills..."></textarea>
       </div>
 
-      <div class="trust-box">
-        <div class="trust-info">
-          <h3>🛡️ Identity Verification Status</h3>
-          <p *ngIf="user()?.kyc_status === 'verified'" class="verified-text">✅ Level 3 Verified Traveler. You can create & commit to pools.</p>
-          <p *ngIf="user()?.kyc_status !== 'verified'" class="unverified-text">⚠️ Unverified Account. Verify your identity via Stripe / Plaid to unlock full pool hosting.</p>
-        </div>
-        <button type="button" class="btn-verify" (click)="startVerification()" [disabled]="user()?.kyc_status === 'verified'">
-          {{ user()?.kyc_status === 'verified' ? 'Identity Verified' : 'Verify Identity via Stripe/Plaid' }}
-        </button>
+      <div class="form-group">
+        <label class="form-label">Avatar Media URL</label>
+        <input type="url" [ngModel]="avatarUrl()" (ngModelChange)="avatarUrl.set($event)" name="avatarUrl" class="form-input" placeholder="https://images.unsplash.com/..." />
       </div>
 
-      <div class="form-actions">
-        <button type="submit" class="btn-save" [disabled]="isSaving()">
+      <div class="form-actions" style="margin-top: var(--space-8); padding-top: var(--space-6); border-top: var(--border); display: flex; justify-content: flex-end;">
+        <button type="submit" class="btn-primary" [disabled]="isSaving()">
           {{ isSaving() ? 'Saving Changes...' : 'Save Profile Changes' }}
         </button>
       </div>
     </form>
+  </div>
+
+  <div class="settings-section" style="margin-top: 2rem;">
+    <div class="section-header">
+      <h3>Admin Tools</h3>
+      <p>System administration and data management.</p>
+    </div>
+
+    <div class="form-grid" style="display: block;">
+      <div class="danger-zone" style="padding: 1.5rem; background: var(--gray-50); border: 1px solid var(--danger); border-radius: var(--radius-md);">
+        <h4 style="color: var(--danger); margin-bottom: 0.5rem;">Database Maintenance</h4>
+        <p style="color: var(--gray-600); font-size: var(--text-sm); margin-bottom: 1rem;">
+          Wipe all simulation and mock data from the database. This action removes test trips like "Tokyo Strict Trip" and test users (simul@example.com).
+        </p>
+        <button class="btn-primary" style="background: var(--danger);" (click)="wipeMockData()">
+          Wipe Mock Data
+        </button>
+      </div>
+    </div>
   </div>
 </div>

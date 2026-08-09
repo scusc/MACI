@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PoolService, Trip } from '../core/pool.service';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 @Component({
   selector: 'app-pool-dashboard',
@@ -15,6 +16,7 @@ export class PoolDashboard implements OnInit {
   private poolService = inject(PoolService);
   public authService = inject(AuthService);
   private router = inject(Router);
+  private toastService = inject(ToastService);
 
   trips = signal<Trip[]>([]);
   isLoading = signal(true);
@@ -33,18 +35,19 @@ export class PoolDashboard implements OnInit {
       },
       error: () => {
         this.isLoading.set(false);
+        this.toastService.error('Failed to load pools.');
       }
     });
   }
 
   deletePool(tripId: string) {
-    if (confirm('Delete this travel pool?')) {
+    if (window.confirm('Are you sure you want to delete this travel pool?')) {
       this.poolService.deleteTrip(tripId).subscribe({
         next: () => {
           this.loadPools();
-          alert('Pool deleted.');
+          this.toastService.info('Travel pool deleted.');
         },
-        error: (err) => alert(err.error?.detail || 'Could not delete pool.')
+        error: (err) => this.toastService.error(err.error?.detail || 'Could not delete pool.')
       });
     }
   }

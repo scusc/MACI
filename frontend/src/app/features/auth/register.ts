@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-register',
@@ -15,6 +16,7 @@ export class Register {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private toastService = inject(ToastService);
 
   registerForm: FormGroup = this.fb.group({
     firstName: ['', Validators.required],
@@ -46,11 +48,12 @@ export class Register {
     this.authService.register(payload).subscribe({
       next: () => {
         this.isSubmitting.set(false);
+        this.toastService.success('Account created successfully. Let\'s set up your travel profile.');
         this.router.navigate(['/quiz']);
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        this.errorMessage.set(err.error?.detail || 'Registration failed. Email may already be registered.');
+        this.errorMessage.set(err.error?.detail || 'Registration failed. This email may already be registered.');
       }
     });
   }

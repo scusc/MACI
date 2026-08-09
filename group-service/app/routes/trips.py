@@ -123,6 +123,26 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
 
 # ── Trip CRUD ──────────────────────────────────────────────────────────────────
 
+@router.delete("/admin/wipe-mock-data")
+async def wipe_mock_data(db: AsyncSession = Depends(get_db)):
+    """Wipe mock data from the database (admin utility)."""
+    try:
+        from sqlalchemy import text
+        # Delete Tokyo trips
+        await db.execute(text("DELETE FROM trip_members WHERE trip_id IN (SELECT id FROM trips WHERE title ILIKE '%Tokyo%')"))
+        await db.execute(text("DELETE FROM trips WHERE title ILIKE '%Tokyo%'"))
+        
+        # Delete mock users
+        await db.execute(text("DELETE FROM pool_members WHERE user_id IN (SELECT id FROM users WHERE email ILIKE '%simul%')"))
+        await db.execute(text("DELETE FROM trip_members WHERE user_id IN (SELECT id FROM users WHERE email ILIKE '%simul%')"))
+        await db.execute(text("DELETE FROM users WHERE email ILIKE '%simul%'"))
+        
+        await db.commit()
+        return {"status": "success", "message": "Mock data wiped"}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("", response_model=List[TripResponse])
 async def list_trips(
     destination: Optional[str] = None,

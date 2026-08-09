@@ -1,41 +1,52 @@
+<app-toast-container></app-toast-container>
+
 <div class="layout-wrapper">
-  <header class="minimal-header">
+  <header class="site-header" role="banner">
     <div class="header-content">
-      <div class="logo-area" routerLink="/feed" style="cursor: pointer;">
-        <div class="logo">RALLY <span>TRAVEL NETWORK</span></div>
-      </div>
-      
-      <nav class="nav-links">
-        <a routerLink="/feed" routerLinkActive="active">Feed</a>
-        <a routerLink="/quiz" routerLinkActive="active">AI Calibration Quiz</a>
-        <a routerLink="/skills" routerLinkActive="active">Skill Swap</a>
-        <a routerLink="/meetups" routerLinkActive="active">Micro-Meetups</a>
-        <a routerLink="/subscription" routerLinkActive="active" class="passport-link">Trust Passport 🛡️</a>
-        <a routerLink="/pools" routerLinkActive="active">My Pools</a>
+      <a class="header-brand" routerLink="/feed" (click)="closeMobileMenu()">
+        <span class="brand-name">Rally</span>
+        <span class="brand-tag">Travel Network</span>
+      </a>
+
+      <nav class="header-nav" [class.open]="mobileMenuOpen" role="navigation" aria-label="Main navigation">
+        <a routerLink="/feed" routerLinkActive="active" (click)="closeMobileMenu()">Feed</a>
+        <a routerLink="/quiz" routerLinkActive="active" (click)="closeMobileMenu()">Calibration</a>
+        <a routerLink="/skills" routerLinkActive="active" (click)="closeMobileMenu()">Skill Swap</a>
+        <a routerLink="/meetups" routerLinkActive="active" (click)="closeMobileMenu()">Meetups</a>
+        <a routerLink="/subscription" routerLinkActive="active" (click)="closeMobileMenu()">Verified Membership</a>
+        <a routerLink="/ai-chat" routerLinkActive="active" (click)="closeMobileMenu()">AI Assistant</a>
+        <a routerLink="/pools" routerLinkActive="active" (click)="closeMobileMenu()">My Pools</a>
       </nav>
 
-      <div class="user-actions">
+      <div class="header-actions">
         <ng-container *ngIf="currentUser() as user; else unauth">
-          <div class="user-badge" routerLink="/settings" title="View Profile & Settings">
-            <span class="karma-pill">✨ {{ user.karma_score || 100 }} pts</span>
-            <span class="kyc-badge" [class.verified]="user.kyc_status === 'verified'">
-              {{ user.kyc_status === 'verified' ? '🛡️ Verified' : '👤 Unverified' }}
-            </span>
-            <span class="user-name">{{ user.first_name || 'Traveler' }}</span>
-          </div>
-          <a routerLink="/settings" class="btn-icon" title="Account Settings">⚙️</a>
-          <button class="btn-logout" (click)="logout()" title="Sign Out">Logout</button>
+          <a routerLink="/settings" class="user-pill" [attr.data-tooltip]="'Account Settings'">
+            <span class="user-avatar">{{ user.first_name?.charAt(0) || 'R' }}</span>
+            <span class="user-name">{{ user.first_name || 'Account' }}</span>
+          </a>
+          <button class="btn-ghost btn-logout" (click)="logout()" aria-label="Sign out">Sign out</button>
         </ng-container>
-        
+
         <ng-template #unauth>
-          <a routerLink="/login" class="btn-secondary">Log In</a>
-          <a routerLink="/register" class="btn-primary">Sign Up</a>
+          <a routerLink="/login" class="btn-ghost">Sign in</a>
+          <a routerLink="/register" class="btn-primary btn-sm">Create account</a>
         </ng-template>
+
+        <button
+          class="mobile-toggle"
+          (click)="toggleMobileMenu()"
+          [attr.aria-expanded]="mobileMenuOpen"
+          aria-label="Toggle navigation menu"
+        >
+          <span class="toggle-bar" [class.open]="mobileMenuOpen"></span>
+        </button>
       </div>
     </div>
   </header>
 
-  <main class="main-content">
+  <main class="main-content" role="main">
     <ng-content></ng-content>
   </main>
+
+  <app-footer></app-footer>
 </div>

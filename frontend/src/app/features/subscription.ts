@@ -1,41 +1,40 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 @Component({
-  selector: 'rally-subscription',
+  selector: 'app-subscription',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './subscription.html',
-  styleUrls: ['./subscription.scss']
+  styleUrl: './subscription.scss',
 })
 export class Subscription {
   public authService = inject(AuthService);
-
+  private toastService = inject(ToastService);
+  
   user = this.authService.currentUser;
 
-  startKYCVerification() {
+  startKYC() {
     const u = this.user();
     if (!u) {
-      alert('Please log in first to verify your Trust Passport identity.');
+      this.toastService.info('Please sign in to verify your identity.');
       return;
     }
-
+    
+    this.toastService.info('Redirecting to Stripe Identity verification...');
+    
     this.authService.startKYC(u.id).subscribe({
       next: (res) => {
         if (res.verification_url) {
           window.location.href = res.verification_url;
-        } else {
-          alert('Verification initialization complete.');
         }
       },
       error: (err) => {
-        alert('Verification service notice: ' + (err.error?.detail || 'Stripe Identity / Plaid credentials required in server configuration.'));
+        this.toastService.error(err.error?.detail || 'Failed to initialize verification. Please try again later.');
       }
     });
-  }
-
-  linkGoogleAccount() {
-    alert('Google Account Linking: OAuth 2.0 PKCE flow initialized for trust score boost.');
   }
 }

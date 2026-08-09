@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ChatService } from '../../core/chat.service';
 import { AuthService } from '../../core/auth.service';
+import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-group-chat',
@@ -16,11 +17,12 @@ export class GroupChat implements OnInit, OnDestroy {
   public chatService = inject(ChatService);
   public authService = inject(AuthService);
   private route = inject(ActivatedRoute);
+  private toastService = inject(ToastService);
 
   poolId = signal('');
   newMessage = signal('');
   
-  // ZK Privacy & Handshake state
+  // Privacy Handshake state
   hasVotedReveal = signal(false);
   isIdentityRevealed = signal(false);
 
@@ -32,7 +34,7 @@ export class GroupChat implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.route.params.subscribe(p => {
-      const pid = p['poolId'] || 'demo-pool-123';
+      const pid = p['poolId'] || 'demo-pool';
       this.poolId.set(pid);
       this.chatService.connect(pid);
     });
@@ -44,8 +46,10 @@ export class GroupChat implements OnInit, OnDestroy {
 
   voteToRevealIdentity() {
     this.hasVotedReveal.set(true);
+    this.toastService.info('Vote registered. Waiting for group consensus...');
     setTimeout(() => {
       this.isIdentityRevealed.set(true);
+      this.toastService.success('Group consensus reached. Identities revealed.');
     }, 1200);
   }
 
@@ -75,24 +79,29 @@ export class GroupChat implements OnInit, OnDestroy {
   }
 
   submitAIMediation() {
-    if (!this.disputeText()) return;
+    if (!this.disputeText()) {
+      this.toastService.warning('Please describe the dispute.');
+      return;
+    }
     this.isMediating.set(true);
 
     this.chatService.requestAIMediator(this.disputeText()).subscribe({
       next: (res) => {
         this.isMediating.set(false);
         this.mediatorResolution.set(res.resolution);
-        // Inject AI Mediator response into group chat
+        
+        // Inject mediator response into chat feed
         this.chatService.messages.update(msgs => [...msgs, {
-          sender: '🤖 Rally AI Mediator',
+          sender: 'System Mediator',
           text: res.resolution,
           timestamp: new Date(),
           is_ai: true
         }]);
+        this.toastService.success('Mediation generated and added to chat.');
       },
       error: () => {
         this.isMediating.set(false);
-        this.mediatorResolution.set('AI Mediator is temporarily unavailable.');
+        this.toastService.error('Mediator is currently unavailable.');
       }
     });
   }

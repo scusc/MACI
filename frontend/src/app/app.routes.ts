@@ -11,6 +11,7 @@ export const appRoutes: Routes = [
   { path: 'meetups', loadComponent: () => import('./features/meetups').then(m => m.Meetups), canActivate: [authGuard] },
   { path: 'subscription', loadComponent: () => import('./features/subscription').then(m => m.Subscription) },
   { path: 'chat/:poolId', loadComponent: () => import('./features/chat/group-chat').then(m => m.GroupChat), canActivate: [authGuard] },
+  { path: 'ai-chat', loadComponent: () => import('./features/chat/ai-chat').then(m => m.AiChat), canActivate: [authGuard] },
   { path: 'settings', loadComponent: () => import('./features/settings').then(m => m.Settings), canActivate: [authGuard] },
   { path: 'host', loadComponent: () => import('./features/host-dashboard').then(m => m.HostDashboard), canActivate: [authGuard] },
   { path: '', redirectTo: 'feed', pathMatch: 'full' }

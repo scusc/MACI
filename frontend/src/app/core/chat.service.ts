@@ -78,6 +78,15 @@ export class ChatService {
     });
   }
 
+  sendDirectMessageToAI(message: string): Observable<{status: string, response: string}> {
+    // We will use the mediator endpoint as a fallback for the direct chat if a dedicated endpoint doesn't exist, 
+    // or just mock it here for the UI flow since we don't have a dedicated AI chat endpoint defined in the backend yet.
+    // For now, let's pretend it hits a backend endpoint /chat/ai
+    return this.http.post<{status: string, response: string}>(`${environment.apiUrl}/chat/mediator`, {
+      dispute_text: `[1-on-1 AI Chat Request] ${message}`
+    });
+  }
+
   disconnect() {
     if (this.subscription) this.subscription.unsubscribe();
     if (this.socket$) this.socket$.complete();

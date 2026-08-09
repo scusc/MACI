@@ -1,104 +1,119 @@
-<div class="skill-swap-container">
-  <div class="header-section">
-    <div>
-      <span class="badge">🤝 Pod Barter Economy</span>
-      <h1>Skill Swap Marketplace & Quotations</h1>
-      <p>Offset trip & co-living costs by contributing your unique skills (Photography, Cooking, Language, Tech, Yoga).</p>
+<div class="page-container">
+  <!-- Feature Info -->
+  <div class="feature-info">
+    <h4>Skill Swap</h4>
+    <p>Exchange professional services for travel subsidies within the Rally network.</p>
+    <ul>
+      <li>Offer skills (e.g., photography, yoga instruction, local guiding) to group trips.</li>
+      <li>Receive partial or full trip subsidies in exchange for your services.</li>
+      <li>Travel hosts can browse available skills to enhance their itineraries.</li>
+    </ul>
+  </div>
+
+  <div class="feed-toolbar">
+    <div class="search-box">
+      <h1 class="page-title">Available Skills</h1>
     </div>
-    <button (click)="openPostModal()" class="btn-primary">+ Post Your Skill</button>
+    <button (click)="openPostModal()" class="btn-primary">Post a Skill</button>
   </div>
 
-  <div *ngIf="isLoading()" class="loading-box">
-    <div class="spinner"></div>
-    <p>Loading real skill listings from Rally database...</p>
-  </div>
+  <div class="feed-container" style="display: block;">
+    <div *ngIf="isLoading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading skills network...</p>
+    </div>
 
-  <!-- Grid of Skills -->
-  <div *ngIf="!isLoading()" class="skills-grid">
-    <div *ngFor="let skill of skills()" class="skill-card">
-      <div class="card-header">
-        <span class="category-pill">{{ skill.category | uppercase }}</span>
-        <span class="value-tag">${{ skill.estimated_value_cents / 100 }} Value</span>
-      </div>
+    <div *ngIf="!isLoading() && skills().length === 0" class="empty-state">
+      <h3>No skills posted yet</h3>
+      <p>Be the first to offer a skill and subsidize your next travel pool.</p>
+      <button (click)="openPostModal()" class="btn-primary">Post a Skill</button>
+    </div>
 
-      <h3>{{ skill.title }}</h3>
-      <p class="description">{{ skill.description }}</p>
-
-      <div class="card-footer">
-        <span class="offered-by">👤 Contributor: {{ skill.user_id ? skill.user_id.substring(0, 8) + '...' : 'Traveler' }}</span>
-        <button (click)="openQuoteModal(skill)" class="btn-quote">Request Barter Quote 📜</button>
+    <div class="skills-grid" *ngIf="!isLoading()">
+      <div *ngFor="let s of skills()" class="skill-card card">
+        <div class="badge skill-category">{{ s.category }}</div>
+        <h3 class="skill-title">{{ s.title }}</h3>
+        <p class="skill-desc">{{ s.description }}</p>
+        
+        <div class="skill-footer">
+          <div class="skill-value">Est. Value: ${{ s.estimated_value_cents / 100 }}</div>
+          <button class="btn-secondary btn-sm" (click)="openQuoteModal(s)">Request Quote</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Post Skill Modal -->
+  <!-- Post Modal -->
   <div *ngIf="showModal()" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>✨ List a New Skill</h2>
-        <button class="btn-close" (click)="closePostModal()">×</button>
+        <h2>Post a Skill</h2>
+        <button class="btn-close" (click)="closePostModal()">&times;</button>
       </div>
 
       <div class="modal-body">
         <div class="form-group">
-          <label>Skill Category</label>
-          <select [ngModel]="newCategory()" (ngModelChange)="newCategory.set($event)">
-            <option value="photography">📷 Photography & Drone Video</option>
-            <option value="language">🗣️ Language & Local Interpreter</option>
-            <option value="cooking">🍳 Culinary & Group Chef</option>
-            <option value="fitness">🧘 Yoga, Surfing & Fitness</option>
-            <option value="tech">💻 Web Dev & Digital Nomad Tech</option>
+          <label class="form-label">Category</label>
+          <select [ngModel]="newCategory()" (ngModelChange)="newCategory.set($event)" class="form-select">
+            <option value="photography">Photography / Videography</option>
+            <option value="guide">Local Guide / Translation</option>
+            <option value="instructor">Yoga / Surf Instructor</option>
+            <option value="logistics">Driver / Logistics</option>
           </select>
         </div>
-
+        
         <div class="form-group">
-          <label>Skill Title</label>
-          <input type="text" [ngModel]="newTitle()" (ngModelChange)="newTitle.set($event)" placeholder="e.g. 4K Drone Footage & Sunset Photoshoot" />
+          <label class="form-label">Title</label>
+          <input type="text" [ngModel]="newTitle()" (ngModelChange)="newTitle.set($event)" class="form-input" placeholder="e.g. Drone Videography for your trip" />
         </div>
 
         <div class="form-group">
-          <label>Description</label>
-          <textarea rows="3" [ngModel]="newDescription()" (ngModelChange)="newDescription.set($event)" placeholder="Describe what you will provide to fellow travelers..."></textarea>
+          <label class="form-label">Description</label>
+          <textarea rows="3" [ngModel]="newDescription()" (ngModelChange)="newDescription.set($event)" class="form-textarea" placeholder="Detail your experience and what you offer..."></textarea>
         </div>
 
         <div class="form-group">
-          <label>Estimated Value ($USD Equivalent)</label>
-          <input type="number" [ngModel]="newValueDollars()" (ngModelChange)="newValueDollars.set($event)" />
+          <label class="form-label">Estimated Value ($USD)</label>
+          <input type="number" [ngModel]="newValueDollars()" (ngModelChange)="newValueDollars.set($event)" class="form-input" />
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closePostModal()">Cancel</button>
-        <button class="btn-primary" (click)="addSkill()">Publish Skill Listing</button>
+        <button class="btn-primary" (click)="addSkill()">Publish Skill</button>
       </div>
     </div>
   </div>
 
-  <!-- Propose Quotation Modal -->
-  <div *ngIf="showQuoteModal()" class="modal-overlay">
+  <!-- Quote Modal -->
+  <div *ngIf="showQuoteModal() && selectedSkill() as s" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>📜 Propose Skill Barter Quotation</h2>
-        <button class="btn-close" (click)="closeQuoteModal()">×</button>
+        <h2>Request Quote</h2>
+        <button class="btn-close" (click)="closeQuoteModal()">&times;</button>
       </div>
 
-      <div *ngIf="selectedSkill() as s" class="modal-body">
-        <p>Proposing exchange for: <strong>{{ s.title }}</strong> (Est. Value: ${{ s.estimated_value_cents / 100 }})</p>
-
-        <div class="form-group">
-          <label>Proposed Cost Offset ($USD)</label>
-          <input type="number" [ngModel]="quoteOffsetDollars()" (ngModelChange)="quoteOffsetDollars.set($event)" />
+      <div class="modal-body">
+        <div class="feature-info" style="margin-bottom: var(--space-4);">
+          <h4>Skill: {{ s.title }}</h4>
+          <p>Estimated Market Value: ${{ s.estimated_value_cents / 100 }}</p>
         </div>
 
         <div class="form-group">
-          <label>Message / Terms</label>
-          <textarea rows="3" [ngModel]="quoteNote()" (ngModelChange)="quoteNote.set($event)" placeholder="Specify exact deliverables, hours, or barter exchange details..."></textarea>
+          <label class="form-label">Offer Subsidy Amount ($USD)</label>
+          <input type="number" [ngModel]="quoteOffsetDollars()" (ngModelChange)="quoteOffsetDollars.set($event)" class="form-input" />
+          <span class="form-hint">How much of their trip cost will you cover in exchange?</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea rows="3" [ngModel]="quoteNote()" (ngModelChange)="quoteNote.set($event)" class="form-textarea" placeholder="Explain your proposal..."></textarea>
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeQuoteModal()">Cancel</button>
-        <button class="btn-primary" (click)="sendQuotation()">Send Formal Quote</button>
+        <button class="btn-primary" (click)="sendQuotation()">Send Quote</button>
       </div>
     </div>
   </div>

@@ -1,40 +1,49 @@
 <div class="auth-container">
-  <div class="card auth-card">
-    <span class="badge">Zero-Knowledge Vault</span>
-    <h1 class="auth-title">Create Shielded Account</h1>
-    <p class="auth-subtitle">Join Rally. Real names remain hidden until mutual handshake.</p>
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1>Create your account</h1>
+      <p>Join Rally to discover travel pools, connect with fellow travelers, and plan group trips together.</p>
+    </div>
 
-    <div *ngIf="errorMessage()" class="alert error" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.85rem;">
+    <div *ngIf="errorMessage()" class="alert alert-error">
       {{ errorMessage() }}
     </div>
 
-    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form">
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form" novalidate>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">First Name</label>
-          <input type="text" formControlName="firstName" class="form-input" placeholder="Alex" />
+          <label class="form-label">First name</label>
+          <input type="text" formControlName="firstName" class="form-input" placeholder="Alex" autocomplete="given-name"
+            [class.is-invalid]="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched" />
+          <span *ngIf="registerForm.get('firstName')?.touched && registerForm.get('firstName')?.errors?.['required']" class="form-error">Required</span>
         </div>
         <div class="form-group">
-          <label class="form-label">Last Name</label>
-          <input type="text" formControlName="lastName" class="form-input" placeholder="Rivers" />
+          <label class="form-label">Last name</label>
+          <input type="text" formControlName="lastName" class="form-input" placeholder="Rivers" autocomplete="family-name"
+            [class.is-invalid]="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched" />
+          <span *ngIf="registerForm.get('lastName')?.touched && registerForm.get('lastName')?.errors?.['required']" class="form-error">Required</span>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Email Address</label>
-        <input type="email" formControlName="email" class="form-input" placeholder="alex@rally.app" />
+        <label class="form-label">Email address</label>
+        <input type="email" formControlName="email" class="form-input" placeholder="alex@example.com" autocomplete="email"
+          [class.is-invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched" />
+        <span *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.errors?.['email']" class="form-error">Please enter a valid email.</span>
       </div>
 
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input type="password" formControlName="password" class="form-input" placeholder="••••••••" />
+        <input type="password" formControlName="password" class="form-input" placeholder="Minimum 8 characters" autocomplete="new-password"
+          [class.is-invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched" />
+        <span *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.errors?.['minlength']" class="form-error">Must be at least 8 characters.</span>
       </div>
 
       <button type="submit" class="btn-primary auth-submit" [disabled]="registerForm.invalid || isSubmitting()">
-        {{ isSubmitting() ? 'Creating Vault Account...' : 'Create Account & Start Calibration' }}
+        {{ isSubmitting() ? 'Creating account...' : 'Create account' }}
       </button>
     </form>
-    
+
     <div class="auth-footer">
       <p>Already have an account? <a routerLink="/login">Sign in</a></p>
     </div>

@@ -35,6 +35,8 @@ kind: Service
 metadata:
   name: frontend-service
   namespace: rally
+  annotations:
+    service.beta.kubernetes.io/azure-dns-label-name: rally-travel-app-v2
 spec:
   type: LoadBalancer # Public entrypoint for the Angular web app
   ports:

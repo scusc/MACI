@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { PoolService, Trip } from '../core/pool.service';
 import { TravelService, TravelSearchResult, FlightOption, HotelOption } from '../core/travel.service';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 @Component({
   selector: 'app-swipe-feed',
@@ -18,6 +19,7 @@ export class SwipeFeed implements OnInit {
   private travelService = inject(TravelService);
   public authService = inject(AuthService);
   private router = inject(Router);
+  private toastService = inject(ToastService);
 
   trips = signal<Trip[]>([]);
   currentIndex = signal(0);
@@ -30,6 +32,9 @@ export class SwipeFeed implements OnInit {
   showCreateModal = signal(false);
   isSearchingTravel = signal(false);
   travelSearchResult = signal<TravelSearchResult | null>(null);
+
+  // Delete confirmation
+  tripToDelete = signal<string | null>(null);
 
   // New post form fields
   postTitle = signal('');
@@ -52,9 +57,11 @@ export class SwipeFeed implements OnInit {
     this.poolService.getTrips(this.searchDestination()).subscribe({
       next: (data) => {
         this.trips.set(data || []);
+        this.currentIndex.set(0);
         this.isLoading.set(false);
       },
       error: () => {
+        this.toastService.error('Failed to load travel pools.');
         this.isLoading.set(false);
       }
     });
@@ -86,6 +93,7 @@ export class SwipeFeed implements OnInit {
 
   openCreateModal() {
     if (!this.authService.getToken()) {
+      this.toastService.info('Please sign in to create a travel pool.');
       this.router.navigate(['/login']);
       return;
     }
@@ -116,24 +124,29 @@ export class SwipeFeed implements OnInit {
         }
         if (res.hotels && res.hotels.length > 0) {
           this.selectedHotel.set(res.hotels[0]);
-          this.postCost.set(res.flights[0].price_usd + res.hotels[0].price_per_night_usd * 5);
+          this.postCost.set(Math.round(res.flights[0].price_usd + res.hotels[0].price_per_night_usd * 5));
         }
+        this.toastService.success('Live travel options retrieved successfully.');
       },
-      error: () => {
+      error: (err) => {
         this.isSearchingTravel.set(false);
+        this.toastService.error('Failed to retrieve live travel options.');
       }
     });
   }
 
   submitNewPost() {
-    if (!this.postTitle() || !this.postDestination()) return;
+    if (!this.postTitle() || !this.postDestination()) {
+      this.toastService.warning('Please fill in all required fields.');
+      return;
+    }
 
     const payload: Partial<Trip> = {
       title: this.postTitle(),
       destination: this.postDestination(),
       start_date: new Date(this.postStartDate()).toISOString(),
       end_date: new Date(this.postEndDate()).toISOString(),
-      description: this.postDescription() || `Group trip to ${this.postDestination()} with real API travel option.`,
+      description: this.postDescription() || `Group trip to ${this.postDestination()}.`,
       estimated_cost_per_person: this.postCost(),
       threshold_pct: 60,
       currency: 'USD'
@@ -143,30 +156,42 @@ export class SwipeFeed implements OnInit {
       next: (newTrip) => {
         this.closeCreateModal();
         this.loadFeed();
-        alert('🎉 Post & Pool published successfully with real live travel data!');
+        this.toastService.success('Travel pool published successfully.');
       },
       error: (err) => {
-        alert('Failed to publish post: ' + (err.error?.detail || 'Identity verification required to create pools.'));
+        this.toastService.error(err.error?.detail || 'Identity verification required to create pools.');
       }
     });
   }
 
-  deletePost(tripId: string) {
-    if (confirm('Are you sure you want to delete this travel pool post?')) {
-      this.poolService.deleteTrip(tripId).subscribe({
-        next: () => {
-          this.loadFeed();
-          alert('Post deleted.');
-        },
-        error: (err) => {
-          alert(err.error?.detail || 'Could not delete post.');
-        }
-      });
-    }
+  confirmDelete(tripId: string) {
+    this.tripToDelete.set(tripId);
+  }
+
+  cancelDelete() {
+    this.tripToDelete.set(null);
+  }
+
+  executeDelete() {
+    const tripId = this.tripToDelete();
+    if (!tripId) return;
+
+    this.poolService.deleteTrip(tripId).subscribe({
+      next: () => {
+        this.tripToDelete.set(null);
+        this.loadFeed();
+        this.toastService.info('Travel pool deleted.');
+      },
+      error: (err) => {
+        this.tripToDelete.set(null);
+        this.toastService.error(err.error?.detail || 'Could not delete post.');
+      }
+    });
   }
 
   joinPool(trip: Trip) {
     if (!this.authService.getToken()) {
+      this.toastService.info('Please sign in to join pools.');
       this.router.navigate(['/login']);
       return;
     }
@@ -175,11 +200,11 @@ export class SwipeFeed implements OnInit {
 
     this.poolService.joinTrip(trip.id, currentUser.id).subscribe({
       next: () => {
-        alert('✅ You have joined this pool!');
+        this.toastService.success('Successfully joined the travel pool.');
         this.loadFeed();
       },
       error: (err) => {
-        alert(err.error?.detail || 'Identity verification (KYC) required to commit to pools.');
+        this.toastService.error(err.error?.detail || 'Identity verification (KYC) required to commit to pools.');
       }
     });
   }

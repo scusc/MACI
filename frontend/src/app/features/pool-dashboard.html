@@ -1,58 +1,63 @@
-<div class="dashboard-container">
-  <div class="dashboard-header">
-    <h2>My Travel Pools & Commitments</h2>
-    <p>Manage your group pools, view participant statuses, and launch live group chats.</p>
+<div class="page-container">
+  <div class="section-header">
+    <h1>My Travel Pools</h1>
+    <p>Manage the pools you host, view participant commitments, and coordinate via live chat.</p>
   </div>
 
-  <div class="kyc-banner" *ngIf="currentUser()?.kyc_status === 'unverified'">
-    <div class="kyc-content">
-      <strong>Identity Verification Required</strong>
-      <p>Identity verification (KYC) via Stripe/Plaid is required to host or commit funds to travel pools.</p>
-    </div>
-    <a routerLink="/settings" class="btn-primary">Verify Identity</a>
+  <div class="alert alert-warning" *ngIf="currentUser()?.kyc_status === 'unverified'">
+    <strong>Verification Required:</strong> Identity verification via Stripe is required to host or commit funds. 
+    <a href="/settings" style="text-decoration: underline; font-weight: 500; margin-left: 8px;">Verify Now</a>
   </div>
 
   <div class="pools-grid" *ngIf="!isLoading(); else loadingState">
-    <div class="card pool-card" *ngFor="let trip of trips()">
-      <div class="pool-header">
-        <h3 class="pool-title">{{ trip.title }} ({{ trip.destination }})</h3>
-        <span class="status-badge" [class.collecting]="trip.status === 'collecting'">
+    
+    <div class="empty-state" *ngIf="trips().length === 0">
+      <h3>No active pools</h3>
+      <p>You haven't joined or created any travel pools yet.</p>
+      <a href="/feed" class="btn-primary">Explore Destinations</a>
+    </div>
+
+    <div class="card" *ngFor="let trip of trips()" style="display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-4);">
+        <h3 style="font-size: var(--text-lg); margin: 0; color: var(--gray-900);">{{ trip.title }} ({{ trip.destination }})</h3>
+        <span class="badge" [style.background]="trip.status === 'collecting' ? 'var(--success)' : 'var(--gray-200)'" [style.color]="trip.status === 'collecting' ? 'white' : 'var(--gray-700)'">
           {{ trip.status | uppercase }}
         </span>
       </div>
 
-      <p class="description">{{ trip.description }}</p>
+      <p style="color: var(--gray-600); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin-bottom: var(--space-6); flex-grow: 1;">{{ trip.description }}</p>
 
-      <div class="pool-stats">
-        <div class="stat-box">
-          <span class="stat-label">Estimated Per Person</span>
-          <span class="stat-value">${{ trip.estimated_cost_per_person }}</span>
+      <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-6); background: var(--gray-50); padding: var(--space-4); border-radius: var(--radius-sm);">
+        <div style="flex: 1; min-width: 100px;">
+          <div style="font-size: var(--text-xs); color: var(--gray-500); text-transform: uppercase; font-weight: 600;">Est. Per Person</div>
+          <div style="font-size: var(--text-lg); font-weight: 700; color: var(--gray-900);">${{ trip.estimated_cost_per_person }}</div>
         </div>
-        <div class="stat-box">
-          <span class="stat-label">Members Joined</span>
-          <span class="stat-value">{{ trip.members.length }}</span>
+        <div style="flex: 1; min-width: 100px;">
+          <div style="font-size: var(--text-xs); color: var(--gray-500); text-transform: uppercase; font-weight: 600;">Members Joined</div>
+          <div style="font-size: var(--text-lg); font-weight: 700; color: var(--gray-900);">{{ trip.members.length }}</div>
         </div>
-        <div class="stat-box">
-          <span class="stat-label">Invite Code</span>
-          <span class="stat-value">{{ trip.invite_code }}</span>
+        <div style="flex: 1; min-width: 100px;">
+          <div style="font-size: var(--text-xs); color: var(--gray-500); text-transform: uppercase; font-weight: 600;">Invite Code</div>
+          <div style="font-size: var(--text-lg); font-weight: 700; color: var(--gray-900);">{{ trip.invite_code }}</div>
         </div>
       </div>
 
-      <div class="pool-actions">
-        <button class="btn-chat" (click)="openChat(trip.id)">
-          💬 Live Group Chat
+      <div style="display: flex; gap: var(--space-3); border-top: var(--border); padding-top: var(--space-4);">
+        <button class="btn-primary" style="flex: 1;" (click)="openChat(trip.id)">
+          Live Chat
         </button>
 
-        <button *ngIf="currentUser()?.id === trip.organizer_id" class="btn-danger" (click)="deletePool(trip.id)">
-          🗑️ Delete Pool
+        <button *ngIf="currentUser()?.id === trip.organizer_id" class="btn-danger" style="flex: 1;" (click)="deletePool(trip.id)">
+          Delete Pool
         </button>
       </div>
     </div>
   </div>
 
   <ng-template #loadingState>
-    <div style="text-align: center; padding: 3rem; color: #94a3b8;">
-      Loading your real travel pools from Rally database...
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading your active pools...</p>
     </div>
   </ng-template>
 </div>

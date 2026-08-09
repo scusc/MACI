@@ -1,57 +1,53 @@
 <div class="chat-container">
   <div class="chat-header">
     <div class="header-titles">
-      <h2>Rally Group & Pool Chat</h2>
-      <p>Pool ID: {{ poolId() }} &bull; Real-Time WebSockets Active</p>
+      <h2>Group Chat</h2>
+      <p>Pool ID: {{ poolId() }}</p>
     </div>
     <div class="header-actions">
-      <button class="btn-mediator" (click)="openMediatorModal()" title="De-escalate travel disputes with AI">
-        🤖 Call AI Mediator
+      <button class="btn-secondary btn-sm" (click)="openMediatorModal()" title="De-escalate travel disputes">
+        Call Mediator
       </button>
       <div class="connection-status">
         <span class="status-dot" [class.connected]="chatService.isConnected()"></span>
-        {{ chatService.isConnected() ? 'Live Connected' : 'Connecting...' }}
+        {{ chatService.isConnected() ? 'Connected' : 'Connecting...' }}
       </div>
     </div>
   </div>
 
-  <!-- ZK Privacy & Handshake Banner -->
+  <!-- Privacy Handshake Banner -->
   <div class="handshake-banner" [class.revealed]="isIdentityRevealed()">
     <div class="banner-info">
-      <span class="lock-icon">{{ isIdentityRevealed() ? '🔓' : '🔒' }}</span>
       <div>
-        <strong>{{ isIdentityRevealed() ? 'Identities Unmasked!' : 'Shielded Identity Mode' }}</strong>
-        <p>{{ isIdentityRevealed() ? 'Mutual double-opt-in complete. Verified real names and contact details unlocked.' : 'Your real identity is hidden behind your nomad karma avatar.' }}</p>
+        <strong>{{ isIdentityRevealed() ? 'Identities Unmasked' : 'Shielded Identity Mode' }}</strong>
+        <p>{{ isIdentityRevealed() ? 'Mutual double-opt-in complete. Verified real names unlocked.' : 'Your real identity is hidden behind an anonymous avatar until the group votes to reveal.' }}</p>
       </div>
     </div>
     <button 
-      class="btn-handshake" 
+      class="btn-secondary btn-sm" 
       *ngIf="!isIdentityRevealed()"
       (click)="voteToRevealIdentity()"
       [disabled]="hasVotedReveal()">
-      {{ hasVotedReveal() ? 'Waiting for Peer Vote...' : 'Vote to Reveal Identity 🤝' }}
+      {{ hasVotedReveal() ? 'Waiting for Vote...' : 'Vote to Reveal' }}
     </button>
   </div>
 
   <div class="chat-messages" #scrollContainer>
-    <!-- Welcome System Message -->
     <div class="message system-message">
       <div class="message-content">
-        Welcome to your live Rally group pool chat! Messages are broadcasted in real time via WebSockets and backed by PostgreSQL database storage.
+        Welcome to your live group pool chat.
       </div>
     </div>
 
     <!-- Live Messages -->
     <div 
-      class="message" 
+      class="message-row" 
       *ngFor="let msg of chatService.messages()" 
-      [class.sent]="msg.sender === 'You'"
-      [class.ai-message]="msg.is_ai || msg.sender === '🤖 Rally AI Mediator'">
+      [class.sent]="msg.sender === 'You'">
       
-      <div class="message-body">
+      <div class="message-bubble" [class.ai-message]="msg.is_ai || msg.sender === 'System Mediator'">
         <div class="message-sender" *ngIf="msg.sender !== 'You'">
           {{ msg.sender }}
-          <span class="karma-badge">✨ Traveler</span>
         </div>
         <div class="message-content">{{ msg.text }}</div>
         <div class="message-time" *ngIf="msg.timestamp">{{ msg.timestamp | date:'shortTime' }}</div>
@@ -64,14 +60,16 @@
       [ngModel]="newMessage()"
       (ngModelChange)="newMessage.set($event)"
       (keydown)="handleKeyDown($event)"
-      placeholder="Type a message to your co-travelers or hit Enter..." 
-      class="chat-textarea" 
-      rows="1"></textarea>
+      placeholder="Type a message..." 
+      class="form-textarea" 
+      rows="1"
+      style="margin: 0; min-height: 44px;"></textarea>
       
     <button 
-      class="btn-primary send-btn" 
+      class="btn-primary" 
       (click)="sendMessage()" 
-      [disabled]="!newMessage().trim()">
+      [disabled]="!newMessage().trim()"
+      style="white-space: nowrap;">
       Send
     </button>
   </div>
@@ -80,28 +78,30 @@
   <div *ngIf="showMediatorModal()" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>🤖 Rally In-App AI Mediator</h2>
-        <button class="btn-close" (click)="closeMediatorModal()">×</button>
+        <h2>System Mediator</h2>
+        <button class="btn-close" (click)="closeMediatorModal()">&times;</button>
       </div>
 
       <div class="modal-body">
-        <p>Experiencing an itinerary disagreement or expense dispute? Describe the issue and let Gemini AI mediate an objective compromise.</p>
+        <p style="margin-bottom: var(--space-4); color: var(--gray-600); font-size: var(--text-sm);">
+          Experiencing an itinerary disagreement or expense dispute? Describe the issue and let the system mediate an objective compromise.
+        </p>
 
         <div class="form-group">
-          <label>Describe the Dispute</label>
-          <textarea rows="3" [ngModel]="disputeText()" (ngModelChange)="disputeText.set($event)" placeholder="e.g. Half the group wants a $200 luxury catamaran tour, but others prefer hiking budget options..."></textarea>
+          <label class="form-label">Describe the Dispute</label>
+          <textarea rows="4" [ngModel]="disputeText()" (ngModelChange)="disputeText.set($event)" class="form-textarea" placeholder="e.g. Half the group wants a $200 tour, but others prefer budget options..."></textarea>
         </div>
 
-        <div *ngIf="mediatorResolution()" class="resolution-box">
-          <h4>💡 AI Resolution Proposal:</h4>
-          <p>{{ mediatorResolution() }}</p>
+        <div *ngIf="mediatorResolution()" style="margin-top: var(--space-6); padding: var(--space-4); background: var(--gray-50); border: var(--border); border-radius: var(--radius-md);">
+          <h4 style="font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--space-2);">Resolution Proposal:</h4>
+          <p style="font-size: var(--text-sm); color: var(--gray-700); line-height: var(--leading-relaxed);">{{ mediatorResolution() }}</p>
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeMediatorModal()">Close</button>
         <button class="btn-primary" (click)="submitAIMediation()" [disabled]="isMediating()">
-          {{ isMediating() ? 'Mediating...' : 'Generate Mediation Proposal' }}
+          {{ isMediating() ? 'Mediating...' : 'Generate Proposal' }}
         </button>
       </div>
     </div>

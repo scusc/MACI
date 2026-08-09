@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 export interface PodSkill {
   id: string;
@@ -26,6 +27,7 @@ export class SkillSwap implements OnInit {
   private http = inject(HttpClient);
   public authService = inject(AuthService);
   private router = inject(Router);
+  private toastService = inject(ToastService);
 
   skills = signal<PodSkill[]>([]);
   isLoading = signal(false);
@@ -55,6 +57,7 @@ export class SkillSwap implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
+        this.toastService.error('Failed to load skills.');
         this.isLoading.set(false);
       }
     });
@@ -62,6 +65,7 @@ export class SkillSwap implements OnInit {
 
   openPostModal() {
     if (!this.authService.getToken()) {
+      this.toastService.info('Please sign in to post a skill.');
       this.router.navigate(['/login']);
       return;
     }
@@ -73,7 +77,10 @@ export class SkillSwap implements OnInit {
   }
 
   addSkill() {
-    if (!this.newTitle()) return;
+    if (!this.newTitle()) {
+      this.toastService.warning('Skill title is required.');
+      return;
+    }
 
     const payload = {
       category: this.newCategory(),
@@ -86,16 +93,17 @@ export class SkillSwap implements OnInit {
       next: () => {
         this.closePostModal();
         this.loadSkills();
-        alert('🎉 Skill listing published to the Rally Skill Swap economy!');
+        this.toastService.success('Skill listing published successfully.');
       },
       error: (err) => {
-        alert('Failed to list skill: ' + (err.error?.detail || 'Please log in.'));
+        this.toastService.error(err.error?.detail || 'Failed to list skill.');
       }
     });
   }
 
   openQuoteModal(skill: PodSkill) {
     if (!this.authService.getToken()) {
+      this.toastService.info('Please sign in to send a quote.');
       this.router.navigate(['/login']);
       return;
     }
@@ -113,7 +121,7 @@ export class SkillSwap implements OnInit {
     const s = this.selectedSkill();
     if (!s) return;
 
-    alert(`📜 Skill Barter Quotation Sent!\nOffered Offset: $${this.quoteOffsetDollars()}\nNote: ${this.quoteNote() || 'No note'}`);
+    this.toastService.success('Quotation sent to the host successfully.');
     this.closeQuoteModal();
   }
 }

@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService, User } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 @Component({
   selector: 'app-settings',
@@ -12,6 +13,7 @@ import { AuthService, User } from '../core/auth.service';
 })
 export class Settings implements OnInit {
   private authService = inject(AuthService);
+  private toastService = inject(ToastService);
 
   user = this.authService.currentUser;
   
@@ -22,8 +24,6 @@ export class Settings implements OnInit {
   avatarUrl = signal('');
 
   isSaving = signal(false);
-  successMsg = signal('');
-  errorMsg = signal('');
 
   ngOnInit() {
     const u = this.user();
@@ -37,9 +37,12 @@ export class Settings implements OnInit {
   }
 
   saveProfile() {
+    if (!this.firstName() || !this.lastName()) {
+      this.toastService.warning('First and last name are required.');
+      return;
+    }
+
     this.isSaving.set(true);
-    this.successMsg.set('');
-    this.errorMsg.set('');
 
     this.authService.updateProfile({
       first_name: this.firstName(),
@@ -50,27 +53,33 @@ export class Settings implements OnInit {
     }).subscribe({
       next: () => {
         this.isSaving.set(false);
-        this.successMsg.set('Profile updated successfully!');
+        this.toastService.success('Profile updated successfully.');
       },
       error: (err) => {
         this.isSaving.set(false);
-        this.errorMsg.set(err.error?.detail || 'Failed to update profile.');
+        this.toastService.error(err.error?.detail || 'Failed to update profile.');
       }
     });
   }
 
-  startVerification() {
-    const u = this.user();
-    if (!u) return;
-    this.authService.startKYC(u.id).subscribe({
-      next: (res) => {
-        if (res.verification_url) {
-          window.location.href = res.verification_url;
-        }
-      },
-      error: (err) => {
-        alert('Stripe/Plaid verification initialization: ' + (err.error?.detail || 'Please check environment keys.'));
+  wipeMockData() {
+    this.toastService.info('Wiping mock data...');
+    // I will just use fetch to keep it simple since we have the token
+    const token = this.authService.getToken();
+    fetch('/api/v1/trips/admin/wipe-mock-data', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-    });
+    }).then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          this.toastService.success('Mock data wiped successfully.');
+        } else {
+          this.toastService.error('Failed to wipe mock data.');
+        }
+      }).catch(() => {
+        this.toastService.error('Error wiping mock data.');
+      });
   }
 }
