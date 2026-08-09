@@ -16,7 +16,6 @@
         </div>
         <div class="avatar-info">
           <div class="avatar-name">{{ firstName() }} {{ lastName() }}</div>
-          <div class="avatar-email">{{ user()?.email }}</div>
         </div>
       </div>
 
@@ -32,11 +31,7 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input type="email" [value]="user()?.email || ''" disabled class="form-input" />
-          <span class="form-hint">Email address cannot be changed once verified.</span>
-        </div>
+
 
         <div class="form-actions">
           <button type="submit" class="btn-primary" [disabled]="isSaving()">

@@ -26,36 +26,50 @@ export class ChatService {
 
   connect(poolId: string) {
     if (!this.socket$ || this.socket$.closed) {
-      const token = localStorage.getItem('slice_token') || '';
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = environment.wsUrl ? environment.wsUrl.replace(/^http/, 'ws') : `${wsProtocol}//${window.location.host}`;
-      
-      const wsUrl = `${wsHost}/api/v1/chat/${poolId}/ws?token=${token}`;
-      
-      try {
-        this.socket$ = webSocket(wsUrl);
-        this.subscription = this.socket$.subscribe({
-          next: (msg: any) => {
-            const parsedText = typeof msg === 'string' ? msg : (msg.content_text || msg.text || JSON.stringify(msg));
-            const senderName = msg.sender_id ? (msg.sender_id.length > 8 ? msg.sender_id.substring(0, 8) : msg.sender_id) : 'Traveler';
-            this.messages.update(msgs => [...msgs, {
-              sender: senderName,
-              text: parsedText,
-              timestamp: new Date()
-            }]);
-          },
-          error: (err) => {
-            console.warn('WebSocket connection fallback:', err);
-            this.isConnected.set(false);
-          },
-          complete: () => {
-            this.isConnected.set(false);
-          }
-        });
-        this.isConnected.set(true);
-      } catch (e) {
-        console.warn('WebSocket error:', e);
-      }
+      // First fetch history
+      this.http.get<ChatMessage[]>(`${environment.apiUrl}/chat/${poolId}/messages`).subscribe({
+        next: (history) => {
+          this.messages.set(history || []);
+          this.establishWebSocket(poolId);
+        },
+        error: (err) => {
+          console.warn('Failed to load chat history:', err);
+          this.establishWebSocket(poolId);
+        }
+      });
+    }
+  }
+
+  private establishWebSocket(poolId: string) {
+    const token = localStorage.getItem('slice_token') || '';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = environment.wsUrl ? environment.wsUrl.replace(/^http/, 'ws') : `${wsProtocol}//${window.location.host}`;
+    
+    const wsUrl = `${wsHost}/api/v1/chat/${poolId}/ws?token=${token}`;
+    
+    try {
+      this.socket$ = webSocket(wsUrl);
+      this.subscription = this.socket$.subscribe({
+        next: (msg: any) => {
+          const parsedText = typeof msg === 'string' ? msg : (msg.content_text || msg.text || JSON.stringify(msg));
+          const senderName = msg.sender_id ? (msg.sender_id.length > 8 ? msg.sender_id.substring(0, 8) : msg.sender_id) : (msg.sender || 'Traveler');
+          this.messages.update(msgs => [...msgs, {
+            sender: senderName,
+            text: parsedText,
+            timestamp: new Date()
+          }]);
+        },
+        error: (err) => {
+          console.warn('WebSocket connection fallback:', err);
+          this.isConnected.set(false);
+        },
+        complete: () => {
+          this.isConnected.set(false);
+        }
+      });
+      this.isConnected.set(true);
+    } catch (e) {
+      console.warn('WebSocket error:', e);
     }
   }
 

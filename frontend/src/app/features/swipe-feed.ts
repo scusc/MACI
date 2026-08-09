@@ -24,11 +24,40 @@ export class SwipeFeed implements OnInit {
   currentUser = this.authService.currentUser;
 
   trips = signal<Trip[]>([]);
-  currentIndex = signal(0);
   isLoading = signal(false);
 
-  // Filter signal
+  // Filter signals
   searchDestination = signal('');
+  searchMaxBudget = signal<number | null>(null);
+  searchStartDate = signal('');
+  searchEndDate = signal('');
+  showFilters = signal(false);
+
+  filteredTrips = computed(() => {
+    let list = this.trips();
+    
+    // The destination filter is mostly handled by the backend, but we can do a local check too just in case
+    if (this.searchDestination()) {
+      const term = this.searchDestination().toLowerCase();
+      list = list.filter(t => t.destination.toLowerCase().includes(term));
+    }
+
+    if (this.searchMaxBudget()) {
+      list = list.filter(t => t.estimated_cost_per_person <= (this.searchMaxBudget() as number));
+    }
+
+    if (this.searchStartDate()) {
+      const filterStart = new Date(this.searchStartDate()).getTime();
+      list = list.filter(t => new Date(t.start_date).getTime() >= filterStart);
+    }
+
+    if (this.searchEndDate()) {
+      const filterEnd = new Date(this.searchEndDate()).getTime();
+      list = list.filter(t => new Date(t.end_date).getTime() <= filterEnd);
+    }
+
+    return list;
+  });
 
   // Modal signals
   showCreateModal = signal(false);
@@ -60,7 +89,6 @@ export class SwipeFeed implements OnInit {
     this.poolService.getTrips(this.searchDestination()).subscribe({
       next: (data) => {
         this.trips.set(data || []);
-        this.currentIndex.set(0);
         this.isLoading.set(false);
       },
       error: () => {
@@ -74,24 +102,10 @@ export class SwipeFeed implements OnInit {
     this.loadFeed();
   }
 
-  currentTrip = computed(() => {
-    const list = this.trips();
-    const idx = this.currentIndex();
-    return idx < list.length ? list[idx] : null;
-  });
+  isEmpty = computed(() => this.filteredTrips().length === 0);
 
-  isEmpty = computed(() => this.currentTrip() === null);
-
-  nextCard() {
-    if (!this.isEmpty()) {
-      this.currentIndex.update(i => i + 1);
-    }
-  }
-
-  prevCard() {
-    if (this.currentIndex() > 0) {
-      this.currentIndex.update(i => i - 1);
-    }
+  toggleFilters() {
+    this.showFilters.update(v => !v);
   }
 
   openCreateModal() {

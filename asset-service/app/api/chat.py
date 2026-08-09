@@ -37,9 +37,36 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 from maci_core.core.security import verify_token
-from fastapi import Query
+from fastapi import Query, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from maci_core.database import get_db, async_session_factory
+from maci_core.models.pool_message import PoolMessage
+from maci_core.models.user import User
 
-@router.websocket("/ws/chat/{pool_id}")
+@router.get("/api/v1/chat/{pool_id}/messages")
+async def get_chat_messages(
+    pool_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(PoolMessage).where(PoolMessage.pool_id == pool_id).order_by(PoolMessage.created_at.asc())
+    )
+    messages = result.scalars().all()
+    
+    return [
+        {
+            "id": str(msg.id),
+            "sender_id": str(msg.sender_id) if msg.sender_id else None,
+            "sender": msg.sender_name or (msg.sender.first_name if msg.sender else "Traveler"),
+            "text": msg.content_text,
+            "timestamp": msg.created_at.isoformat(),
+            "is_ai": msg.is_ai
+        }
+        for msg in messages
+    ]
+
+@router.websocket("/api/v1/chat/{pool_id}/ws")
 async def chat_endpoint(
     websocket: WebSocket, 
     pool_id: str, 
@@ -76,8 +103,27 @@ async def chat_endpoint(
             print(f"FINAL TEXT CONTENT: {text_content}")
                 
             # Broadcast the user's message to everyone in the room
-            await manager.broadcast(json.dumps({"sender": "User", "text": text_content}), pool_id)
-            
+            sender_name = "User"
+            try:
+                async with async_session_factory() as db:
+                    result = await db.execute(select(User).where(User.id == user_id))
+                    user = result.scalar_one_or_none()
+                    if user:
+                        sender_name = user.first_name
+                    
+                    new_msg = PoolMessage(
+                        pool_id=pool_id,
+                        sender_id=user_id,
+                        sender_name=sender_name,
+                        content_text=text_content,
+                        is_ai=False
+                    )
+                    db.add(new_msg)
+                    await db.commit()
+            except Exception as db_err:
+                print(f"DB Error: {db_err}")
+                
+            await manager.broadcast(json.dumps({"sender": sender_name, "text": text_content}), pool_id)
             # Trigger the AI Concierge Swarm ONLY if explicitly called
             if text_content.strip().lower().startswith("@slice") or text_content.strip().lower().startswith("/ai"):
                 # Clean the trigger from the prompt
@@ -100,6 +146,21 @@ async def chat_endpoint(
                     except asyncio.TimeoutError:
                         print("AI SWARM TIMED OUT AFTER 20 SECONDS!")
                         ai_response = "The AI Concierge is taking too long to respond."
+                        
+                    # Save AI Response to DB
+                    try:
+                        async with async_session_factory() as db:
+                            ai_msg = PoolMessage(
+                                pool_id=pool_id,
+                                sender_id=None,
+                                sender_name="Slice AI",
+                                content_text=ai_response,
+                                is_ai=True
+                            )
+                            db.add(ai_msg)
+                            await db.commit()
+                    except Exception as db_err:
+                        print(f"AI DB Save Error: {db_err}")
                         
                     # Broadcast the AI's response back to the room
                     await manager.broadcast(json.dumps({"sender": "Slice AI", "text": ai_response}), pool_id)

@@ -17,6 +17,7 @@ from maci_core.models.connection import MatchConnection, ChatMessage
 from maci_core.models.insurance import InsurancePolicy
 from maci_core.models.moderation import Report, Ban
 from maci_core.models.skill_swap import PodSkill, SkillSwapRequest, SkillCategory, SwapStatus
+from maci_core.models.pool_message import PoolMessage
 
 __all__ = [
     "User",
@@ -43,5 +44,6 @@ __all__ = [
     "SkillSwapRequest",
     "SkillCategory",
     "SwapStatus",
+    "PoolMessage",
 ]
 

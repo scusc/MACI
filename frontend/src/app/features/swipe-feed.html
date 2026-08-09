@@ -22,6 +22,9 @@
         (keyup.enter)="onSearch()"
       />
       <button (click)="onSearch()" class="btn-secondary">Search</button>
+      <button (click)="toggleFilters()" class="btn-ghost" title="Advanced Search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+      </button>
     </div>
 
     <button (click)="openCreateModal()" class="btn-primary">
@@ -29,20 +32,38 @@
     </button>
   </div>
 
+  <!-- Advanced Search Filters -->
+  <div class="advanced-filters" *ngIf="showFilters()">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Max Budget ($)</label>
+        <input type="number" [ngModel]="searchMaxBudget()" (ngModelChange)="searchMaxBudget.set($event)" class="form-input" placeholder="e.g. 1500" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Start Date (from)</label>
+        <input type="date" [ngModel]="searchStartDate()" (ngModelChange)="searchStartDate.set($event)" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Date (until)</label>
+        <input type="date" [ngModel]="searchEndDate()" (ngModelChange)="searchEndDate.set($event)" class="form-input" />
+      </div>
+    </div>
+  </div>
+
   <!-- Cards Feed Area -->
-  <div class="feed-container">
+  <div class="feed-container vertical-feed">
     <div *ngIf="isLoading()" class="loading-state">
       <div class="spinner"></div>
       <p>Fetching travel pools and live data...</p>
     </div>
 
     <div *ngIf="!isLoading() && isEmpty()" class="empty-state">
-      <h3>No travel pools found matching "{{ searchDestination() }}"</h3>
-      <p>Be the first traveler to create a pool for this destination.</p>
+      <h3>No travel pools found.</h3>
+      <p>Try adjusting your search filters or be the first to create a pool.</p>
       <button (click)="openCreateModal()" class="btn-primary">Create Pool</button>
     </div>
 
-    <div *ngIf="!isLoading() && currentTrip() as trip" class="swipe-card card">
+    <div *ngFor="let trip of filteredTrips()" class="swipe-card card list-card">
       <div class="card-media">
         <img [src]="trip.media_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000'" alt="Travel destination" />
         <div class="destination-badge">{{ trip.destination }}</div>
@@ -73,10 +94,6 @@
         </div>
 
         <div class="card-actions">
-          <button class="action-btn action-prev" (click)="prevCard()" [disabled]="currentIndex() === 0">
-            ← Previous
-          </button>
-          
           <button class="action-btn action-join" (click)="joinPool(trip)">
             Join · ${{ trip.estimated_cost_per_person }}
           </button>
@@ -87,10 +104,6 @@
 
           <button *ngIf="currentUser()?.id === trip.organizer_id" class="action-btn action-delete" (click)="confirmDelete(trip.id)">
             Remove
-          </button>
-
-          <button class="action-btn action-next" (click)="nextCard()" [disabled]="currentIndex() >= trips().length - 1">
-            Next →
           </button>
         </div>
       </div>

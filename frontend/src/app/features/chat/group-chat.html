@@ -8,9 +8,9 @@
       <button class="btn-secondary btn-sm" (click)="openMediatorModal()" title="De-escalate travel disputes">
         Call Mediator
       </button>
-      <div class="connection-status">
+      <div class="connection-status" [attr.data-tooltip]="chatService.isConnected() ? 'Live' : 'Offline Mode'">
         <span class="status-dot" [class.connected]="chatService.isConnected()"></span>
-        {{ chatService.isConnected() ? 'Connected' : 'Connecting...' }}
+        {{ chatService.isConnected() ? 'Online' : 'Offline Mode' }}
       </div>
     </div>
   </div>
