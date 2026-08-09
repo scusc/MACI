@@ -8,15 +8,17 @@
         <span class="brand-tag">Travel Network</span>
       </a>
 
-      <nav class="header-nav" [class.open]="mobileMenuOpen" role="navigation" aria-label="Main navigation">
-        <a routerLink="/feed" routerLinkActive="active" (click)="closeMobileMenu()">Feed</a>
-        <a routerLink="/quiz" routerLinkActive="active" (click)="closeMobileMenu()">Calibration</a>
-        <a routerLink="/skills" routerLinkActive="active" (click)="closeMobileMenu()">Skill Swap</a>
-        <a routerLink="/meetups" routerLinkActive="active" (click)="closeMobileMenu()">Meetups</a>
-        <a routerLink="/subscription" routerLinkActive="active" (click)="closeMobileMenu()">Verified Membership</a>
-        <a routerLink="/ai-chat" routerLinkActive="active" (click)="closeMobileMenu()">AI Assistant</a>
-        <a routerLink="/pools" routerLinkActive="active" (click)="closeMobileMenu()">My Pools</a>
-      </nav>
+      <ng-container *ngIf="currentUser()">
+        <nav class="header-nav" [class.open]="mobileMenuOpen" role="navigation" aria-label="Main navigation">
+          <a routerLink="/feed" routerLinkActive="active" (click)="closeMobileMenu()">Feed</a>
+          <a routerLink="/quiz" routerLinkActive="active" (click)="closeMobileMenu()">Calibration</a>
+          <a routerLink="/skills" routerLinkActive="active" (click)="closeMobileMenu()">Skill Swap</a>
+          <a routerLink="/meetups" routerLinkActive="active" (click)="closeMobileMenu()">Meetups</a>
+          <a routerLink="/subscription" routerLinkActive="active" (click)="closeMobileMenu()">Verified Membership</a>
+          <a routerLink="/ai-chat" routerLinkActive="active" (click)="closeMobileMenu()">AI Assistant</a>
+          <a routerLink="/pools" routerLinkActive="active" (click)="closeMobileMenu()">My Pools</a>
+        </nav>
+      </ng-container>
 
       <div class="header-actions">
         <ng-container *ngIf="currentUser() as user; else unauth">

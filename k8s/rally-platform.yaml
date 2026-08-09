@@ -85,6 +85,8 @@ spec:
           value: "redis://:gbyJCelLLLEZ6fwYQatC6iUoW2YMNJYMfAzCaEVPGys=@redis-maci-dev-456.redis.cache.windows.net:6380"
         - name: JWT_SECRET_KEY
           value: "maci-super-secret-production-key-2026"
+        - name: GOOGLE_CLIENT_ID
+          value: "1043294374752-lumvimthmun0lv7sljjv21hbf31t48n4.apps.googleusercontent.com"
 ---
 apiVersion: v1
 kind: Service

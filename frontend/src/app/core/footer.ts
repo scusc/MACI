@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { AuthService } from './auth.service';
 
 @Component({
   selector: 'app-footer',
@@ -12,4 +13,7 @@ import { RouterLink } from '@angular/router';
 export class Footer {
   currentYear = new Date().getFullYear();
   appVersion = '1.0.0';
+
+  private authService = inject(AuthService);
+  currentUser = this.authService.currentUser;
 }

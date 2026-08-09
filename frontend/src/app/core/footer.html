@@ -14,16 +14,18 @@
       </div>
 
       <!-- Product -->
-      <div class="footer-section">
-        <h4>Product</h4>
-        <ul>
-          <li><a routerLink="/feed">Travel Pools</a></li>
-          <li><a routerLink="/skills">Skill Swap</a></li>
-          <li><a routerLink="/meetups">Micro-Meetups</a></li>
-          <li><a routerLink="/subscription">Verified Membership</a></li>
-          <li><a routerLink="/ai-chat">AI Assistant</a></li>
-        </ul>
-      </div>
+      <ng-container *ngIf="currentUser()">
+        <div class="footer-section">
+          <h4>Product</h4>
+          <ul>
+            <li><a routerLink="/feed">Travel Pools</a></li>
+            <li><a routerLink="/skills">Skill Swap</a></li>
+            <li><a routerLink="/meetups">Micro-Meetups</a></li>
+            <li><a routerLink="/subscription">Verified Membership</a></li>
+            <li><a routerLink="/ai-chat">AI Assistant</a></li>
+          </ul>
+        </div>
+      </ng-container>
 
       <!-- Support -->
       <div class="footer-section">
