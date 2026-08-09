@@ -17,9 +17,11 @@ import { ToastService } from '../core/toast.service';
 export class SwipeFeed implements OnInit {
   private poolService = inject(PoolService);
   private travelService = inject(TravelService);
-  public authService = inject(AuthService);
+  private authService = inject(AuthService);
   private router = inject(Router);
   private toastService = inject(ToastService);
+
+  currentUser = this.authService.currentUser;
 
   trips = signal<Trip[]>([]);
   currentIndex = signal(0);
@@ -38,15 +40,16 @@ export class SwipeFeed implements OnInit {
 
   // New post form fields
   postTitle = signal('');
-  postOrigin = signal('NYC');
-  postDestination = signal('Bali');
-  postStartDate = signal('2026-09-01');
-  postEndDate = signal('2026-09-07');
+  postOrigin = signal('');
+  postDestination = signal('');
+  postStartDate = signal('');
+  postEndDate = signal('');
   postDescription = signal('');
-  postCost = signal(1200);
+  postCost = signal(0);
 
   selectedFlight = signal<FlightOption | null>(null);
   selectedHotel = signal<HotelOption | null>(null);
+  isPublishing = signal(false);
 
   ngOnInit() {
     this.loadFeed();
@@ -152,13 +155,17 @@ export class SwipeFeed implements OnInit {
       currency: 'USD'
     };
 
+    this.isPublishing.set(true);
+
     this.poolService.createTrip(payload).subscribe({
       next: (newTrip) => {
+        this.isPublishing.set(false);
         this.closeCreateModal();
         this.loadFeed();
         this.toastService.success('Travel pool published successfully.');
       },
       error: (err) => {
+        this.isPublishing.set(false);
         this.toastService.error(err.error?.detail || 'Identity verification required to create pools.');
       }
     });

@@ -26,7 +26,6 @@
     <div *ngIf="!isLoading() && skills().length === 0" class="empty-state">
       <h3>No skills posted yet</h3>
       <p>Be the first to offer a skill and subsidize your next travel pool.</p>
-      <button (click)="openPostModal()" class="btn-primary">Post a Skill</button>
     </div>
 
     <div class="skills-grid" *ngIf="!isLoading()">

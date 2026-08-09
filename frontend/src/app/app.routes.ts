@@ -9,7 +9,7 @@ export const appRoutes: Routes = [
   { path: 'pools', loadComponent: () => import('./features/pool-dashboard').then(m => m.PoolDashboard), canActivate: [authGuard] },
   { path: 'skills', loadComponent: () => import('./features/skill-swap').then(m => m.SkillSwap), canActivate: [authGuard] },
   { path: 'meetups', loadComponent: () => import('./features/meetups').then(m => m.Meetups), canActivate: [authGuard] },
-  { path: 'subscription', loadComponent: () => import('./features/subscription').then(m => m.Subscription) },
+  { path: 'subscription', loadComponent: () => import('./features/subscription').then(m => m.Subscription), canActivate: [authGuard] },
   { path: 'chat/:poolId', loadComponent: () => import('./features/chat/group-chat').then(m => m.GroupChat), canActivate: [authGuard] },
   { path: 'ai-chat', loadComponent: () => import('./features/chat/ai-chat').then(m => m.AiChat), canActivate: [authGuard] },
   { path: 'settings', loadComponent: () => import('./features/settings').then(m => m.Settings), canActivate: [authGuard] },

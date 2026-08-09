@@ -26,7 +26,6 @@
     <div *ngIf="!isLoading() && meetups().length === 0" class="empty-state">
       <h3>No meetups found</h3>
       <p>Be the first to host a micro-meetup in your area.</p>
-      <button (click)="openCreateModal()" class="btn-primary">Host a Meetup</button>
     </div>
 
     <div class="meetups-grid" *ngIf="!isLoading()">
@@ -40,7 +39,7 @@
         <p class="meetup-desc">{{ m.description }}</p>
         
         <div class="meetup-footer">
-          <div class="meetup-location">Loc: {{ m.latitude | number:'1.2-2' }}, {{ m.longitude | number:'1.2-2' }}</div>
+          <div class="meetup-location">{{ m.location_name || 'Location pending' }}</div>
           <button class="btn-primary btn-sm" (click)="openCheckIn(m)">Check-In</button>
         </div>
       </div>

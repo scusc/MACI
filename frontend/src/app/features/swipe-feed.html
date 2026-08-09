@@ -46,7 +46,7 @@
       <div class="card-media">
         <img [src]="trip.media_url || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000'" alt="Travel destination" />
         <div class="destination-badge">{{ trip.destination }}</div>
-        <div class="status-tag" [class.active]="trip.status === 'collecting'">
+        <div class="status-tag">
           {{ trip.status | uppercase }}
         </div>
       </div>
@@ -68,26 +68,30 @@
         <div class="members-preview">
           <span class="label">Roster:</span>
           <span *ngFor="let m of trip.members" class="badge" [class.organizer]="m.role === 'organizer'">
-            {{ m.display_name || m.email.split('@')[0] }} ({{ m.role }})
+            {{ m.display_name || 'Member' }} · {{ m.role }}
           </span>
         </div>
 
         <div class="card-actions">
-          <button class="btn-secondary" (click)="prevCard()" [disabled]="currentIndex() === 0">Previous</button>
-          
-          <button class="btn-primary" (click)="joinPool(trip)">
-            Join & Commit (${{ trip.estimated_cost_per_person }})
+          <button class="action-btn action-prev" (click)="prevCard()" [disabled]="currentIndex() === 0">
+            ← Previous
           </button>
           
-          <button class="btn-secondary" (click)="openChat(trip.id)">
-            Live Chat
+          <button class="action-btn action-join" (click)="joinPool(trip)">
+            Join · ${{ trip.estimated_cost_per_person }}
+          </button>
+          
+          <button class="action-btn action-chat" (click)="openChat(trip.id)">
+            💬 Chat
           </button>
 
-          <button *ngIf="authService.currentUser()?.id === trip.organizer_id" class="btn-danger" (click)="confirmDelete(trip.id)">
-            Delete
+          <button *ngIf="currentUser()?.id === trip.organizer_id" class="action-btn action-delete" (click)="confirmDelete(trip.id)">
+            Remove
           </button>
 
-          <button class="btn-secondary" (click)="nextCard()" [disabled]="currentIndex() >= trips().length - 1">Next</button>
+          <button class="action-btn action-next" (click)="nextCard()" [disabled]="currentIndex() >= trips().length - 1">
+            Next →
+          </button>
         </div>
       </div>
     </div>
@@ -105,7 +109,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" (click)="cancelDelete()">Cancel</button>
-        <button class="btn-danger" (click)="executeDelete()">Delete</button>
+        <button class="btn-primary" (click)="executeDelete()">Delete</button>
       </div>
     </div>
   </div>
@@ -182,7 +186,9 @@
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeCreateModal()">Cancel</button>
-        <button class="btn-primary" (click)="submitNewPost()">Publish Pool</button>
+        <button class="btn-primary" (click)="submitNewPost()" [disabled]="isPublishing()">
+          {{ isPublishing() ? 'Publishing...' : 'Publish Pool' }}
+        </button>
       </div>
     </div>
   </div>

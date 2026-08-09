@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService, User } from '../core/auth.service';
 import { ToastService } from '../core/toast.service';
 
@@ -14,6 +15,7 @@ import { ToastService } from '../core/toast.service';
 export class Settings implements OnInit {
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
+  private router = inject(Router);
 
   user = this.authService.currentUser;
   
@@ -21,7 +23,6 @@ export class Settings implements OnInit {
   lastName = signal('');
   bio = signal('');
   originAirport = signal('');
-  avatarUrl = signal('');
 
   isSaving = signal(false);
 
@@ -32,7 +33,6 @@ export class Settings implements OnInit {
       this.lastName.set(u.last_name || '');
       this.bio.set(u.bio || '');
       this.originAirport.set(u.origin_airport || '');
-      this.avatarUrl.set(u.avatar_url || '');
     }
   }
 
@@ -48,8 +48,7 @@ export class Settings implements OnInit {
       first_name: this.firstName(),
       last_name: this.lastName(),
       bio: this.bio(),
-      origin_airport: this.originAirport(),
-      avatar_url: this.avatarUrl()
+      origin_airport: this.originAirport()
     }).subscribe({
       next: () => {
         this.isSaving.set(false);
@@ -62,24 +61,8 @@ export class Settings implements OnInit {
     });
   }
 
-  wipeMockData() {
-    this.toastService.info('Wiping mock data...');
-    // I will just use fetch to keep it simple since we have the token
-    const token = this.authService.getToken();
-    fetch('/api/v1/trips/admin/wipe-mock-data', {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    }).then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          this.toastService.success('Mock data wiped successfully.');
-        } else {
-          this.toastService.error('Failed to wipe mock data.');
-        }
-      }).catch(() => {
-        this.toastService.error('Error wiping mock data.');
-      });
+  signOut() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

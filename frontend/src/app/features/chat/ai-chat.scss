@@ -22,3 +22,8 @@
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
 }
+
+.chat-textarea {
+  margin: 0;
+  min-height: 44px;
+}

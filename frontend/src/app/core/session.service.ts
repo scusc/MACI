@@ -13,7 +13,9 @@ export class SessionService {
   private ngZone = inject(NgZone);
   
   private timeoutId: any;
+  private warningId: any;
   private readonly TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+  private readonly WARNING_MS = 13 * 60 * 1000; // 13 minutes (2 mins before timeout)
 
   init() {
     this.resetTimer();
@@ -32,12 +34,18 @@ export class SessionService {
   private resetTimer() {
     if (this.authService.getToken() === null) return;
 
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-    }
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+    if (this.warningId) clearTimeout(this.warningId);
     
     this.ngZone.runOutsideAngular(() => {
+      this.warningId = setTimeout(() => this.showWarning(), this.WARNING_MS);
       this.timeoutId = setTimeout(() => this.logout(), this.TIMEOUT_MS);
+    });
+  }
+
+  private showWarning() {
+    this.ngZone.run(() => {
+      this.toastService.warning('Your session will expire in 2 minutes due to inactivity.');
     });
   }
 

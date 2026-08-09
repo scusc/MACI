@@ -11,13 +11,9 @@ import { ToastService } from './toast.service';
       <div
         *ngFor="let toast of toastService.toasts()"
         class="toast"
-        [class.toast-success]="toast.type === 'success'"
-        [class.toast-error]="toast.type === 'error'"
-        [class.toast-warning]="toast.type === 'warning'"
-        [class.toast-info]="toast.type === 'info'"
         role="alert"
       >
-        <span class="toast-icon">
+        <span class="toast-icon" [attr.aria-label]="toast.type">
           {{ toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : toast.type === 'warning' ? '!' : 'i' }}
         </span>
         <span class="toast-message">{{ toast.message }}</span>
@@ -30,18 +26,15 @@ import { ToastService } from './toast.service';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       font-size: 11px;
       font-weight: 700;
       flex-shrink: 0;
+      background: var(--gray-100);
+      color: var(--gray-600);
     }
-
-    .toast-success .toast-icon { background: #ECFDF5; color: #059669; }
-    .toast-error .toast-icon { background: #FEF2F2; color: #DC2626; }
-    .toast-warning .toast-icon { background: #FFFBEB; color: #D97706; }
-    .toast-info .toast-icon { background: #EFF6FF; color: #2563EB; }
 
     .toast-message {
       flex: 1;
@@ -57,6 +50,7 @@ import { ToastService } from './toast.service';
       cursor: pointer;
       padding: 0 2px;
       line-height: 1;
+      transition: color 120ms ease;
     }
 
     .toast-dismiss:hover {
