@@ -11,6 +11,7 @@ export interface Meetup {
   id: string;
   title: string;
   description: string;
+  location_name?: string;
   latitude: number;
   longitude: number;
   start_time: string;

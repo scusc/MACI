@@ -23,7 +23,7 @@
       <div class="header-actions">
         <ng-container *ngIf="currentUser() as user; else unauth">
           <a routerLink="/settings" class="user-pill" [attr.data-tooltip]="'Account Settings'">
-            <span class="user-avatar">{{ user.first_name?.charAt(0) || 'R' }}</span>
+            <span class="user-avatar">{{ user.first_name.charAt(0) || 'R' }}</span>
             <span class="user-name">{{ user.first_name || 'Account' }}</span>
           </a>
           <button class="btn-ghost btn-logout" (click)="logout()" aria-label="Sign out">Sign out</button>
