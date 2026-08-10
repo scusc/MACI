@@ -37,7 +37,10 @@ spec:
         - name: PAYMENT_SERVICE_URL
           value: "http://payment-service:8000"
         - name: JWT_SECRET_KEY
-          value: "maci-super-secret-production-key-2026"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: JWT_SECRET_KEY
 ---
 apiVersion: v1
 kind: Service
@@ -80,11 +83,20 @@ spec:
         - containerPort: 8000
         env:
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql3-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: DATABASE_URL
         - name: REDIS_URL
-          value: "redis://:gbyJCelLLLEZ6fwYQatC6iUoW2YMNJYMfAzCaEVPGys=@redis-maci-dev-456.redis.cache.windows.net:6380"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: REDIS_URL
         - name: JWT_SECRET_KEY
-          value: "maci-super-secret-production-key-2026"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: JWT_SECRET_KEY
         - name: GOOGLE_CLIENT_ID
           value: "1043294374752-lumvimthmun0lv7sljjv21hbf31t48n4.apps.googleusercontent.com"
 ---
@@ -128,9 +140,20 @@ spec:
         - containerPort: 8000
         env:
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql3-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: DATABASE_URL
         - name: REDIS_URL
-          value: "redis://:gbyJCelLLLEZ6fwYQatC6iUoW2YMNJYMfAzCaEVPGys=@redis-maci-dev-456.redis.cache.windows.net:6380"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: REDIS_URL
+        - name: SERPAPI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: SERPAPI_API_KEY
         - name: AZURE_OPENAI_ENDPOINT
           valueFrom:
             secretKeyRef:
@@ -184,11 +207,20 @@ spec:
         - containerPort: 8000
         env:
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql3-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: DATABASE_URL
         - name: JWT_SECRET_KEY
-          value: "maci-super-secret-production-key-2026"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: JWT_SECRET_KEY
         - name: SERVICE_BUS_CONNECTION_STRING
-          value: "Endpoint=sb://sb-maci-dev-456.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=hNXexRs6eNhZxI+vfHkt9yO50GulN9+lL+ASbDI8JP0="
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: SERVICE_BUS_CONNECTION_STRING
 ---
 apiVersion: v1
 kind: Service
@@ -230,11 +262,20 @@ spec:
         - containerPort: 8000
         env:
         - name: DATABASE_URL
-          value: "postgresql+asyncpg://maciadmin:p%2BY%5Bp2A.zuj.7efn5QT%3DYiHx7-NBZ%5DD%24@psql3-maci-dev.postgres.database.azure.com:5432/rally?ssl=require"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: DATABASE_URL
         - name: JWT_SECRET_KEY
-          value: "maci-super-secret-production-key-2026"
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: JWT_SECRET_KEY
         - name: SERVICE_BUS_CONNECTION_STRING
-          value: "Endpoint=sb://sb-maci-dev-456.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=hNXexRs6eNhZxI+vfHkt9yO50GulN9+lL+ASbDI8JP0="
+          valueFrom:
+            secretKeyRef:
+              name: rally-core-secrets
+              key: SERVICE_BUS_CONNECTION_STRING
 ---
 apiVersion: v1
 kind: Service

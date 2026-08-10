@@ -24,7 +24,7 @@ async def search_inventory(
 ) -> List[AssetCreate]:
     """Search for properties using SerpAPI's google_hotels engine."""
     if SERPAPI_KEY == "PLACEHOLDER_KEY":
-        return _generate_fallback_mock_data(category)
+        raise HTTPException(status_code=500, detail="SerpAPI configuration missing in production.")
 
     params = {
         "engine": "google_hotels", "q": query, "check_in_date": check_in, 
@@ -39,8 +39,7 @@ async def search_inventory(
             return _parse_hotel_response(response.json(), category)
     except Exception as e:
         logger.error(f"Failed to fetch hotel inventory from SerpAPI: {str(e)}")
-        # Fallback to mock data on error to keep UI functional
-        return _generate_fallback_mock_data(category)
+        raise HTTPException(status_code=502, detail=f"Upstream SerpAPI error: {str(e)}")
 
 async def search_events(
     query: str,
@@ -49,7 +48,7 @@ async def search_events(
 ) -> List[AssetCreate]:
     """Search for events (Concerts, Festivals) using SerpAPI's google_events engine."""
     if SERPAPI_KEY == "PLACEHOLDER_KEY":
-        return _generate_fallback_mock_data(category)
+        raise HTTPException(status_code=500, detail="SerpAPI configuration missing in production.")
 
     params = {
         "engine": "google_events", "q": query, "location": location, "api_key": SERPAPI_KEY
@@ -62,7 +61,7 @@ async def search_events(
             return _parse_event_response(response.json(), category)
     except Exception as e:
         logger.error(f"Failed to fetch event inventory from SerpAPI: {str(e)}")
-        return _generate_fallback_mock_data(category)
+        raise HTTPException(status_code=502, detail=f"Upstream SerpAPI error: {str(e)}")
 
 async def search_flights(
     departure_id: str,
@@ -73,7 +72,7 @@ async def search_flights(
 ) -> List[Dict[str, Any]]:
     """Search for flights using SerpAPI's google_flights engine."""
     if SERPAPI_KEY == "PLACEHOLDER_KEY":
-        return [{"airline": "Mock Airlines", "price": 250, "departure_time": "14:00"}]
+        raise HTTPException(status_code=500, detail="SerpAPI configuration missing in production.")
         
     params = {
         "engine": "google_flights", "departure_id": departure_id, "arrival_id": arrival_id,
@@ -91,7 +90,7 @@ async def search_flights(
             return data.get("best_flights", [])[:3] # Return top 3 flights
     except Exception as e:
         logger.error(f"Failed to fetch flights from SerpAPI: {str(e)}")
-        return []
+        raise HTTPException(status_code=502, detail=f"Upstream SerpAPI error: {str(e)}")
 
 async def search_local(
     query: str,
@@ -99,7 +98,7 @@ async def search_local(
 ) -> List[Dict[str, Any]]:
     """Search for local restaurants/places using SerpAPI's google_local engine."""
     if SERPAPI_KEY == "PLACEHOLDER_KEY":
-        return [{"name": "Mock Tapas Bar", "rating": 4.8, "type": "Vegan Friendly"}]
+        raise HTTPException(status_code=500, detail="SerpAPI configuration missing in production.")
         
     params = {
         "engine": "google_local", "q": query, "location": location,
@@ -114,7 +113,7 @@ async def search_local(
             return data.get("local_results", [])[:5] # Return top 5 places
     except Exception as e:
         logger.error(f"Failed to fetch local places from SerpAPI: {str(e)}")
-        return []
+        raise HTTPException(status_code=502, detail=f"Upstream SerpAPI error: {str(e)}")
 
 def _parse_hotel_response(data: dict, category: str) -> List[AssetCreate]:
     assets = []
@@ -153,9 +152,3 @@ def _parse_event_response(data: dict, category: str) -> List[AssetCreate]:
         ))
     return assets
 
-def _generate_fallback_mock_data(category: str) -> List[AssetCreate]:
-    if category == "event":
-        return [AssetCreate(title="VIP Table at Tomorrowland", description="Exclusive VIP table.", asset_type="event", category="event", location="Boom, Belgium", total_price=5000.0, currency="USD", total_slices=10, media_urls=["https://example.com/tomorrowland.jpg"])]
-    if category == "budget":
-        return [AssetCreate(title="Cozy Cabin in the Woods", description="A budget-friendly 2-bedroom cabin.", asset_type="cabin", category="budget", location="Denver, Colorado", total_price=300.0, currency="USD", total_slices=4, media_urls=["https://example.com/cabin.jpg"])]
-    return [AssetCreate(title="Luxury Cliffside Villa", description="A premium villa.", asset_type="villa", category="luxury", location="Bali, Indonesia", total_price=1200.0, currency="USD", total_slices=6, media_urls=["https://example.com/villa.jpg"])]
