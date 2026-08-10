@@ -46,6 +46,9 @@ class Pool(Base):
     members: Mapped[list["PoolMember"]] = relationship(
         back_populates="pool", cascade="all, delete-orphan"
     )
+    messages: Mapped[list["PoolMessage"]] = relationship(
+        back_populates="pool", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Pool {self.id} Status: {self.status}>"
