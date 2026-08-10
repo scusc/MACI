@@ -64,6 +64,11 @@ export class SwipeFeed implements OnInit {
   isSearchingTravel = signal(false);
   travelSearchResult = signal<TravelSearchResult | null>(null);
 
+  isQuoting = signal(false);
+  aiQuoteResult = signal<any>(null);
+  poolGroupSize = signal(4);
+  poolBudgetTier = signal('balanced');
+
   // Delete confirmation
   tripToDelete = signal<string | null>(null);
 
@@ -148,6 +153,35 @@ export class SwipeFeed implements OnInit {
       error: (err) => {
         this.isSearchingTravel.set(false);
         this.toastService.error('Failed to retrieve live travel options.');
+      }
+    });
+  }
+
+  requestAIQuote() {
+    if (!this.postOrigin() || !this.postDestination() || !this.postStartDate() || !this.postEndDate()) {
+      this.toastService.error("Please enter origin, destination, and dates first.");
+      return;
+    }
+
+    this.isQuoting.set(true);
+    this.aiQuoteResult.set(null);
+
+    this.poolService.getAIQuote({
+      origin: this.postOrigin(),
+      destination: this.postDestination(),
+      outbound_date: this.postStartDate(),
+      return_date: this.postEndDate(),
+      group_size: this.poolGroupSize(),
+      budget_tier: this.poolBudgetTier()
+    }).subscribe({
+      next: (res) => {
+        this.aiQuoteResult.set(res);
+        this.postCost.set(res.estimated_cost);
+        this.isQuoting.set(false);
+      },
+      error: () => {
+        this.toastService.error("Failed to generate AI quote.");
+        this.isQuoting.set(false);
       }
     });
   }
