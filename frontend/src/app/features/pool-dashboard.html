@@ -1,7 +1,10 @@
 <div class="page-container">
-  <div class="section-header">
-    <h1>My Travel Pools</h1>
-    <p>Manage the pools you host, view participant commitments, and coordinate via live chat.</p>
+  <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+      <h1>My Travel Pools</h1>
+      <p>Manage the pools you host, view participant commitments, and coordinate via live chat.</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()">Host a Travel Pool</button>
   </div>
 
   <div class="alert" *ngIf="currentUser()?.kyc_status === 'unverified'">
@@ -60,4 +63,100 @@
       <p>Loading your active pools...</p>
     </div>
   </ng-template>
+
+  <!-- Create Pool Modal with AI Pricing Engine -->
+  <div *ngIf="showCreateModal()" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Host a Travel Pool</h2>
+        <button class="btn-close" (click)="closeCreateModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Pool Title</label>
+          <input type="text" [ngModel]="poolTitle()" (ngModelChange)="poolTitle.set($event)" class="form-input" placeholder="e.g. Summer in Bali Villa" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Origin (Airport Code)</label>
+            <input type="text" [ngModel]="poolOrigin()" (ngModelChange)="poolOrigin.set($event)" class="form-input" placeholder="e.g. JFK" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination</label>
+            <input type="text" [ngModel]="poolDestination()" (ngModelChange)="poolDestination.set($event)" class="form-input" placeholder="e.g. Bali" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" [ngModel]="poolStartDate()" (ngModelChange)="poolStartDate.set($event)" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="date" [ngModel]="poolEndDate()" (ngModelChange)="poolEndDate.set($event)" class="form-input" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Target Group Size</label>
+            <input type="number" [ngModel]="poolGroupSize()" (ngModelChange)="poolGroupSize.set($event)" class="form-input" min="2" max="20" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Budget Tier</label>
+            <select [ngModel]="poolBudgetTier()" (ngModelChange)="poolBudgetTier.set($event)" class="form-input">
+              <option value="budget">Budget</option>
+              <option value="balanced">Balanced</option>
+              <option value="luxury">Luxury</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Estimated Cost Per Person ($USD)</label>
+          <div class="ai-quote-container">
+            <div class="input-with-button">
+              <input type="number" [ngModel]="poolEstimatedCost()" (ngModelChange)="poolEstimatedCost.set($event)" class="form-input" placeholder="e.g. 1500" />
+              <button class="btn-magic" (click)="requestAIQuote()" [disabled]="isQuoting()">
+                ✨ {{ isQuoting() ? 'Calculating...' : 'AI Smart Quote' }}
+              </button>
+            </div>
+            
+            <!-- AI Quoting Loading State -->
+            <div class="ai-loading" *ngIf="isQuoting()">
+              <div class="shimmer-line"></div>
+              <p class="ai-loading-text">Analyzing live flight routes and splitting luxury accommodation...</p>
+            </div>
+
+            <!-- AI Result Card -->
+            <div class="ai-result-card" *ngIf="aiQuoteResult() as quote">
+              <div class="ai-result-header">
+                <span class="ai-badge">✨ AI Optimized Quote</span>
+                <span class="ai-price">${{ quote.estimated_cost }}</span>
+              </div>
+              <p class="ai-reasoning">{{ quote.reasoning }}</p>
+              <div class="ai-evidence">
+                <a *ngFor="let link of quote.evidence_links" [href]="link.url" target="_blank" class="evidence-pill">
+                  {{ link.label }} <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea rows="2" [ngModel]="poolDescription()" (ngModelChange)="poolDescription.set($event)" class="form-textarea" placeholder="Tell people about the trip..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeCreateModal()">Cancel</button>
+        <button class="btn-primary" (click)="createPool()">Create Pool</button>
+      </div>
+    </div>
+  </div>
 </div>

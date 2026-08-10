@@ -276,3 +276,152 @@ async def generate_ai_itinerary(request: AIItineraryRequest):
             "Leverage Rally Skill Swap to exchange language skills with local hosts."
         ]
     }
+
+class AIQuoteRequest(BaseModel):
+    origin: str
+    destination: str
+    outbound_date: str
+    return_date: str
+    group_size: int = 1
+    budget_tier: str = "balanced"
+
+class EvidenceLink(BaseModel):
+    label: str
+    url: str
+
+class AIQuoteResponse(BaseModel):
+    estimated_cost: int
+    reasoning: str
+    evidence_links: List[EvidenceLink]
+
+@router.post("/quote", response_model=AIQuoteResponse)
+async def generate_ai_quote(request: AIQuoteRequest):
+    """
+    Advanced AI Quote generation. Constructs exact evidence links, parses weather and flight context,
+    and asks Azure OpenAI to evaluate trade-offs and calculate a buffered cost in JSON format.
+    """
+    import urllib.parse
+    import json
+    from datetime import datetime
+    
+    logger.info(f"Generating Advanced AI quote for {request.group_size} travelers to {request.destination}")
+    
+    try:
+        outbound = datetime.strptime(request.outbound_date, "%Y-%m-%d")
+        return_d = datetime.strptime(request.return_date, "%Y-%m-%d")
+        trip_days = max(1, (return_d - outbound).days)
+    except Exception:
+        trip_days = 5
+
+    search_result = await search_travel(
+        origin=request.origin,
+        destination=request.destination,
+        departure_date=request.outbound_date,
+        return_date=request.return_date,
+        passengers=1 # Flights are per-person
+    )
+    
+    flights = search_result.flights
+    hotels = search_result.hotels
+    weather = search_result.weather
+    
+    # Analyze Flights
+    if flights:
+        best_flight = flights[0]
+        avg_flight = best_flight.price_usd
+        flight_duration = best_flight.duration
+        flight_airline = best_flight.airline
+    else:
+        avg_flight = 850.0
+        flight_duration = "Unknown"
+        flight_airline = "Major Carrier"
+        
+    # Analyze Hotels
+    if hotels:
+        sorted_hotels = sorted(hotels, key=lambda x: x.price_per_night_usd)
+        if request.budget_tier == "budget":
+            target_hotel = sorted_hotels[0]
+        elif request.budget_tier == "luxury":
+            target_hotel = sorted_hotels[-1]
+        else:
+            target_hotel = sorted_hotels[len(sorted_hotels)//2]
+            
+        total_hotel_cost = target_hotel.price_per_night_usd * trip_days
+        hotel_cost_per_person = total_hotel_cost / request.group_size
+        hotel_name = target_hotel.name
+    else:
+        total_hotel_cost = 200.0 * trip_days
+        hotel_cost_per_person = total_hotel_cost / request.group_size
+        hotel_name = "Generic Accommodation"
+
+    baseline_cost_per_person = int(avg_flight + hotel_cost_per_person)
+    
+    # Construct exact evidence URLs
+    encoded_dest = urllib.parse.quote(request.destination)
+    encoded_orig = urllib.parse.quote(request.origin)
+    
+    flight_url = f"https://www.google.com/travel/flights?q=Flights%20to%20{encoded_dest}%20from%20{encoded_orig}%20on%20{request.outbound_date}"
+    hotel_url = f"https://www.google.com/travel/hotels?q=Hotels%20in%20{encoded_dest}&checkin={request.outbound_date}&checkout={request.return_date}"
+    
+    evidence = [
+        EvidenceLink(label="✈️ Exact Flight", url=flight_url),
+        EvidenceLink(label=f"🏨 {hotel_name[:15]}...", url=hotel_url)
+    ]
+    
+    # Weather Context
+    weather_ctx = f"{weather.temp_celsius}°C, {weather.condition}" if weather else "Unknown"
+
+    prompt_context = f"""
+    You are an elite travel strategist for Rally.
+    Destination: {request.destination}
+    Current Weather Forecast: {weather_ctx}
+    Group Size: {request.group_size} people.
+    Trip duration: {trip_days} nights.
+    Budget Tier: {request.budget_tier}.
+    
+    Flight Context: Best option is {flight_airline} ({flight_duration}) at ${int(avg_flight)} per person.
+    Accommodation Context: {hotel_name} totaling ${int(total_hotel_cost)} (Splitting {request.group_size} ways = ${int(hotel_cost_per_person)} per person).
+    Raw Baseline Per Person: ${baseline_cost_per_person}
+    
+    TASK:
+    1. Calculate the final `estimated_cost` per person. You MUST add a 10-15% buffer to the Raw Baseline to account for hidden fees, local transport, and dining.
+    2. Write a highly thoughtful, 3-sentence `reasoning` evaluating the trade-offs. Mention the weather, the flight quality (duration), and why the accommodation split is a smart move. Make the user feel they are getting expert advice.
+    
+    Respond ONLY in valid JSON format matching exactly:
+    {{
+      "estimated_cost": 1500,
+      "reasoning": "Your 3-sentence expert advice here."
+    }}
+    """
+    
+    try:
+        from app.services.ai_delegate import get_azure_openai_client
+        from langchain_core.messages import SystemMessage, HumanMessage
+        llm = get_azure_openai_client()
+        
+        sys_msg = SystemMessage(content="You are a data-driven travel strategist. Output ONLY valid JSON.")
+        human_msg = HumanMessage(content=prompt_context)
+        
+        response = await llm.ainvoke([sys_msg, human_msg])
+        
+        # Parse JSON
+        content = response.content
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0]
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0]
+            
+        data = json.loads(content.strip())
+        final_cost = int(data.get("estimated_cost", baseline_cost_per_person * 1.1))
+        reasoning = data.get("reasoning", "Expert reasoning unavailable.")
+        
+    except Exception as e:
+        logger.warning(f"AI Quote Reasoning failed: {e}")
+        final_cost = int(baseline_cost_per_person * 1.1)
+        reasoning = f"Flights average ${int(avg_flight)} and splitting accommodation costs ${int(hotel_cost_per_person)}. I've added a 10% buffer for hidden travel expenses like transport and meals."
+
+    return AIQuoteResponse(
+        estimated_cost=final_cost,
+        reasoning=reasoning,
+        evidence_links=evidence
+    )

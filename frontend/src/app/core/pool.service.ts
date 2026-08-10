@@ -31,6 +31,26 @@ export interface Trip {
   weather_temp?: number;
 }
 
+export interface AIQuoteRequest {
+  origin: string;
+  destination: string;
+  outbound_date: string;
+  return_date: string;
+  group_size: number;
+  budget_tier: string;
+}
+
+export interface EvidenceLink {
+  label: string;
+  url: string;
+}
+
+export interface AIQuoteResponse {
+  estimated_cost: number;
+  reasoning: string;
+  evidence_links: EvidenceLink[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -64,5 +84,9 @@ export class PoolService {
 
   joinTrip(tripId: string, memberId: string): Observable<Trip> {
     return this.http.post<Trip>(`${this.apiUrl}/${tripId}/members/${memberId}/commit`, {});
+  }
+
+  getAIQuote(params: AIQuoteRequest): Observable<AIQuoteResponse> {
+    return this.http.post<AIQuoteResponse>(`${environment.apiUrl}/travel/quote`, params);
   }
 }
