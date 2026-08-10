@@ -27,7 +27,7 @@
       </button>
     </div>
 
-    <button (click)="openCreateModal()" class="btn-primary">
+    <button (click)="goToArchitect()" class="btn-primary">
       Create Pool
     </button>
   </div>
@@ -60,7 +60,7 @@
     <div *ngIf="!isLoading() && isEmpty()" class="empty-state">
       <h3>No travel pools found.</h3>
       <p>Try adjusting your search filters or be the first to create a pool.</p>
-      <button (click)="openCreateModal()" class="btn-primary">Create Pool</button>
+      <button (click)="goToArchitect()" class="btn-primary">Create Pool</button>
     </div>
 
     <div *ngFor="let trip of filteredTrips()" class="swipe-card card list-card">
@@ -192,51 +192,11 @@
 
           <div class="form-group">
             <label class="form-label">Estimated Cost Per Person ($USD)</label>
-            <div class="ai-quote-container">
-              <div class="input-with-button">
-                <input type="number" [ngModel]="postCost()" (ngModelChange)="postCost.set($event)" class="form-input" />
-                <button class="btn-magic" (click)="requestAIQuote()" [disabled]="isQuoting()">
-                  ✨ {{ isQuoting() ? 'Calculating...' : 'AI Smart Quote' }}
-                </button>
-              </div>
-              
-              <!-- AI Quoting Loading State -->
-              <div class="ai-loading" *ngIf="isQuoting()">
-                <div class="shimmer-line"></div>
-                <p class="ai-loading-text">Analyzing live flight routes and splitting luxury accommodation...</p>
-              </div>
-
-              <!-- AI Result Card -->
-              <div class="ai-result-card" *ngIf="aiQuoteResult() as quote">
-                <div class="ai-result-header">
-                  <span class="ai-badge">Agent Breakdown</span>
-                  <span class="ai-price">${{ quote.estimated_cost }}</span>
-                </div>
-                <div class="ai-result-body">
-                  <p class="ai-reasoning">{{ quote.reasoning }}</p>
-                  <ul class="ai-breakdown-list">
-                    <li>
-                      <i class="icon-flight"></i>
-                      <span><strong>Flights:</strong> ~${{ quote.breakdown.flights }} <a *ngIf="quote.evidence_links.flights" [href]="quote.evidence_links.flights" target="_blank" class="evidence-link">(Verify)</a></span>
-                    </li>
-                    <li>
-                      <i class="icon-hotel"></i>
-                      <span><strong>Accommodation:</strong> ~${{ quote.breakdown.accommodation }} <a *ngIf="quote.evidence_links.hotels" [href]="quote.evidence_links.hotels" target="_blank" class="evidence-link">(Verify)</a></span>
-                    </li>
-                    <li>
-                      <i class="icon-buffer"></i>
-                      <span><strong>Buffer (15%):</strong> ~${{ quote.breakdown.buffer }}</span>
-                    </li>
-                  </ul>
-                  <div class="ai-weather-context" *ngIf="quote.weather_context">
-                    <small>Context: {{ quote.weather_context }}</small>
-                  </div>
-                </div>
-              </div>
+            <div class="input-with-button">
+              <input type="number" [ngModel]="postCost()" (ngModelChange)="postCost.set($event)" class="form-input" />
             </div>
           </div>
         </div>
-      </div>
 
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeCreateModal()">Cancel</button>
@@ -247,3 +207,4 @@
     </div>
   </div>
 </div>
+

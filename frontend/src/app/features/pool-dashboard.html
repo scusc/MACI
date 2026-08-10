@@ -117,33 +117,8 @@
 
         <div class="form-group">
           <label class="form-label">Estimated Cost Per Person ($USD)</label>
-          <div class="ai-quote-container">
-            <div class="input-with-button">
-              <input type="number" [ngModel]="poolEstimatedCost()" (ngModelChange)="poolEstimatedCost.set($event)" class="form-input" placeholder="e.g. 1500" />
-              <button class="btn-magic" (click)="requestAIQuote()" [disabled]="isQuoting()">
-                ✨ {{ isQuoting() ? 'Calculating...' : 'AI Smart Quote' }}
-              </button>
-            </div>
-            
-            <!-- AI Quoting Loading State -->
-            <div class="ai-loading" *ngIf="isQuoting()">
-              <div class="shimmer-line"></div>
-              <p class="ai-loading-text">Analyzing live flight routes and splitting luxury accommodation...</p>
-            </div>
-
-            <!-- AI Result Card -->
-            <div class="ai-result-card" *ngIf="aiQuoteResult() as quote">
-              <div class="ai-result-header">
-                <span class="ai-badge">✨ AI Optimized Quote</span>
-                <span class="ai-price">${{ quote.estimated_cost }}</span>
-              </div>
-              <p class="ai-reasoning">{{ quote.reasoning }}</p>
-              <div class="ai-evidence">
-                <a *ngFor="let link of quote.evidence_links" [href]="link.url" target="_blank" class="evidence-pill">
-                  {{ link.label }} <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                </a>
-              </div>
-            </div>
+          <div class="input-with-button">
+            <input type="number" [ngModel]="poolEstimatedCost()" (ngModelChange)="poolEstimatedCost.set($event)" class="form-input" placeholder="e.g. 1500" />
           </div>
         </div>
 

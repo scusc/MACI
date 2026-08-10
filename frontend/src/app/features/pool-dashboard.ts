@@ -81,33 +81,8 @@ export class PoolDashboard implements OnInit {
     this.aiQuoteResult.set(null);
   }
 
-  requestAIQuote() {
-    if (!this.poolOrigin() || !this.poolDestination() || !this.poolStartDate() || !this.poolEndDate()) {
-      this.toastService.error("Please enter origin, destination, and dates first.");
-      return;
-    }
-
-    this.isQuoting.set(true);
-    this.aiQuoteResult.set(null);
-
-    this.poolService.getAIQuote({
-      origin: this.poolOrigin(),
-      destination: this.poolDestination(),
-      outbound_date: this.poolStartDate(),
-      return_date: this.poolEndDate(),
-      group_size: this.poolGroupSize(),
-      budget_tier: this.poolBudgetTier()
-    }).subscribe({
-      next: (res) => {
-        this.aiQuoteResult.set(res);
-        this.poolEstimatedCost.set(res.estimated_cost);
-        this.isQuoting.set(false);
-      },
-      error: () => {
-        this.toastService.error("Failed to generate AI quote.");
-        this.isQuoting.set(false);
-      }
-    });
+  goToArchitect() {
+    this.router.navigate(['/architect']);
   }
 
   createPool() {

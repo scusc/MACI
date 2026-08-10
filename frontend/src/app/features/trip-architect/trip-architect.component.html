@@ -1,0 +1,136 @@
+<div class="architect-container">
+  <div class="header">
+    <h1>Trip Architect</h1>
+    <p>Design a complex multi-origin itinerary and let our AI calculate the logistics equitably.</p>
+  </div>
+
+  <div class="wizard-content" *ngIf="!quoteResult && !isLoading">
+    <form [formGroup]="architectForm" (ngSubmit)="generateQuote()">
+      
+      <div class="section-card roster-card">
+        <div class="section-header">
+          <h2><i class="icon-group"></i> The Roster</h2>
+          <button type="button" class="btn-add" (click)="addTraveler()">+ Add Traveler</button>
+        </div>
+        
+        <div formArrayName="travelers" class="list-container">
+          <div *ngFor="let t of travelers.controls; let i=index" [formGroupName]="i" class="list-item">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input class="form-input" formControlName="name" placeholder="e.g. Alice">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Origin Airport</label>
+              <input class="form-input" formControlName="origin" placeholder="e.g. JFK">
+            </div>
+            <button type="button" class="btn-remove" (click)="removeTraveler(i)" *ngIf="travelers.length > 1">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-card itinerary-card">
+        <div class="section-header">
+          <h2><i class="icon-route"></i> The Itinerary</h2>
+          <button type="button" class="btn-add" (click)="addLeg()">+ Add Stop</button>
+        </div>
+        
+        <div formArrayName="itinerary" class="list-container">
+          <div *ngFor="let leg of itinerary.controls; let i=index" [formGroupName]="i" class="list-item">
+            <div class="form-group">
+              <label class="form-label">Destination {{i + 1}}</label>
+              <input class="form-input" formControlName="destination" placeholder="e.g. Paris">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Arrival</label>
+              <input class="form-input" type="date" formControlName="arrival_date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Departure</label>
+              <input class="form-input" type="date" formControlName="departure_date">
+            </div>
+            <button type="button" class="btn-remove" (click)="removeLeg(i)" *ngIf="itinerary.length > 1">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-card config-card">
+        <h2><i class="icon-settings"></i> Preferences</h2>
+        <div class="form-group">
+          <label class="form-label">Accommodation Tier</label>
+          <select class="form-select" formControlName="budget_tier">
+            <option value="budget">Budget / Hostels</option>
+            <option value="balanced">Balanced / 3-4 Stars</option>
+            <option value="luxury">Luxury / Villas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="error-msg" *ngIf="error">{{error}}</div>
+
+      <button type="submit" class="btn-primary huge-btn" [disabled]="architectForm.invalid">
+        Generate Agentic Quote
+      </button>
+    </form>
+  </div>
+
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <h3>AI is orchestrating your trip...</h3>
+    <p>Searching flights, finding villas, and calculating logistics.</p>
+  </div>
+
+  <div class="result-container" *ngIf="quoteResult && !isLoading">
+    <div class="result-header">
+      <h2>The Blueprint</h2>
+      <p class="ai-reasoning">{{quoteResult.reasoning}}</p>
+    </div>
+
+    <div class="shared-liability-card">
+      <h3>Shared Liability (Group Accommodation)</h3>
+      <div class="hotel-details">
+        <div class="hotel-info">
+          <h4>{{quoteResult.shared_accommodation_name}}</h4>
+          <p>Total Group Cost: <strong>${{quoteResult.shared_accommodation_total}}</strong></p>
+        </div>
+        <div class="cost-split">
+          <span class="label">Fair Share Split</span>
+          <span class="amount">${{quoteResult.shared_cost_per_person}} <span>/ person</span></span>
+        </div>
+        <a *ngIf="quoteResult.hotel_evidence" [href]="quoteResult.hotel_evidence" target="_blank" class="btn-outline">View Options</a>
+      </div>
+    </div>
+
+    <div class="matrix-card">
+      <h3>Individual Liability (The Quote Matrix)</h3>
+      <table class="premium-table">
+        <thead>
+          <tr>
+            <th>Traveler</th>
+            <th>Route Details</th>
+            <th>Flight Cost</th>
+            <th>Shared Cost</th>
+            <th>Total Cost</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tq of quoteResult.traveler_quotes">
+            <td>
+              <div class="traveler-name">{{tq.name}}</div>
+              <div class="traveler-origin">{{tq.origin}}</div>
+            </td>
+            <td class="route-cell">{{tq.flight_route}}</td>
+            <td class="cost individual-cost">${{tq.individual_cost}}</td>
+            <td class="cost shared-cost">+ ${{tq.shared_cost}}</td>
+            <td class="cost total-cost">${{tq.total_cost}}</td>
+            <td>
+              <a *ngIf="tq.flight_evidence" [href]="tq.flight_evidence" target="_blank" class="btn-link">Verify</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <button class="btn-secondary mt-4" (click)="quoteResult = null">Modify Itinerary</button>
+  </div>
+</div>

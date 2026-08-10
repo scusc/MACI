@@ -31,24 +31,40 @@ export interface Trip {
   weather_temp?: number;
 }
 
-export interface AIQuoteRequest {
+export interface Traveler {
+  name: string;
   origin: string;
+}
+
+export interface TripLeg {
   destination: string;
-  outbound_date: string;
-  return_date: string;
-  group_size: number;
+  arrival_date: string;
+  departure_date: string;
+}
+
+export interface AIQuoteRequest {
+  travelers: Traveler[];
+  itinerary: TripLeg[];
   budget_tier: string;
 }
 
-export interface EvidenceLink {
-  label: string;
-  url: string;
+export interface TravelerQuote {
+  name: string;
+  origin: string;
+  flight_route: string;
+  individual_cost: number;
+  shared_cost: number;
+  total_cost: number;
+  flight_evidence?: string;
 }
 
 export interface AIQuoteResponse {
-  estimated_cost: number;
+  shared_cost_per_person: number;
+  shared_accommodation_name: string;
+  shared_accommodation_total: number;
+  hotel_evidence?: string;
+  traveler_quotes: TravelerQuote[];
   reasoning: string;
-  evidence_links: EvidenceLink[];
 }
 
 @Injectable({

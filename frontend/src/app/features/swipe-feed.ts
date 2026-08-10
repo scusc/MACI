@@ -157,33 +157,8 @@ export class SwipeFeed implements OnInit {
     });
   }
 
-  requestAIQuote() {
-    if (!this.postOrigin() || !this.postDestination() || !this.postStartDate() || !this.postEndDate()) {
-      this.toastService.error("Please enter origin, destination, and dates first.");
-      return;
-    }
-
-    this.isQuoting.set(true);
-    this.aiQuoteResult.set(null);
-
-    this.poolService.getAIQuote({
-      origin: this.postOrigin(),
-      destination: this.postDestination(),
-      outbound_date: this.postStartDate(),
-      return_date: this.postEndDate(),
-      group_size: this.poolGroupSize(),
-      budget_tier: this.poolBudgetTier()
-    }).subscribe({
-      next: (res) => {
-        this.aiQuoteResult.set(res);
-        this.postCost.set(res.estimated_cost);
-        this.isQuoting.set(false);
-      },
-      error: () => {
-        this.toastService.error("Failed to generate AI quote.");
-        this.isQuoting.set(false);
-      }
-    });
+  goToArchitect() {
+    this.router.navigate(['/architect']);
   }
 
   submitNewPost() {

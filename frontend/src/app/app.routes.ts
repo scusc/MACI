@@ -14,5 +14,6 @@ export const appRoutes: Routes = [
   { path: 'ai-chat', loadComponent: () => import('./features/chat/ai-chat').then(m => m.AiChat), canActivate: [authGuard] },
   { path: 'settings', loadComponent: () => import('./features/settings').then(m => m.Settings), canActivate: [authGuard] },
   { path: 'host', loadComponent: () => import('./features/host-dashboard').then(m => m.HostDashboard), canActivate: [authGuard] },
+  { path: 'architect', loadComponent: () => import('./features/trip-architect/trip-architect.component').then(m => m.TripArchitectComponent), canActivate: [authGuard] },
   { path: '', redirectTo: 'feed', pathMatch: 'full' }
 ];
