@@ -25,11 +25,11 @@ class MACIError(HTTPException):
 # ── Auth Errors ──────────────────────────────────────────────────────
 
 class InvalidCredentialsError(MACIError):
-    def __init__(self):
+    def __init__(self, detail: str = "Invalid email or password.", error_code: str = "INVALID_CREDENTIALS"):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password.",
-            error_code="INVALID_CREDENTIALS",
+            detail=detail,
+            error_code=error_code,
         )
 
 
