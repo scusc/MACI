@@ -1,16 +1,15 @@
-<div class="architect-container">
-  <div class="header">
-    <h1>Trip Architect</h1>
-    <p>Design a complex multi-origin itinerary and let our AI calculate the logistics equitably.</p>
-  </div>
+<div class="architect-layout">
+  <div class="architect-container">
+    <div class="hero-header">
+      <h1>Multi-origin trip architect</h1>
+      <p>Coordinate your group itinerary.</p>
+    </div>
 
-  <div class="wizard-content" *ngIf="!quoteResult && !isLoading">
-    <form [formGroup]="architectForm" (ngSubmit)="generateQuote()">
-      
-      <div class="section-card roster-card">
+    <!-- Input Form -->
+    <div class="input-form" *ngIf="viewState === 'input' && !isLoading">
+      <form [formGroup]="architectForm" (ngSubmit)="generateQuote()">
         <div class="section-header">
-          <h2><i class="icon-group"></i> The Roster</h2>
-          <button type="button" class="btn-add" (click)="addTraveler()">+ Add Traveler</button>
+          <h2><i class="icon-users"></i> Travelers and origins</h2>
         </div>
         
         <div formArrayName="travelers" class="list-container">
@@ -20,19 +19,18 @@
               <input class="form-input" formControlName="name" placeholder="e.g. Alice">
             </div>
             <div class="form-group">
-              <label class="form-label">Origin Airport</label>
+              <label class="form-label">Origin airport</label>
               <input class="form-input" formControlName="origin" placeholder="e.g. JFK">
             </div>
             <button type="button" class="btn-remove" (click)="removeTraveler(i)" *ngIf="travelers.length > 1">&times;</button>
           </div>
+          <button type="button" class="btn-add ghost-btn" (click)="addTraveler()">+ Add traveler</button>
         </div>
-      </div>
 
-      <div class="section-card itinerary-card">
-        <div class="section-header">
-          <h2><i class="icon-route"></i> The Itinerary</h2>
-          <button type="button" class="btn-add" (click)="addLeg()">+ Add Stop</button>
+        <div class="section-header" style="margin-top: var(--space-8);">
+          <h2><i class="icon-route"></i> Destinations</h2>
         </div>
+        
         
         <div formArrayName="itinerary" class="list-container">
           <div *ngFor="let leg of itinerary.controls; let i=index" [formGroupName]="i" class="list-item">
@@ -41,96 +39,159 @@
               <input class="form-input" formControlName="destination" placeholder="e.g. Paris">
             </div>
             <div class="form-group">
-              <label class="form-label">Arrival</label>
-              <input class="form-input" type="date" formControlName="arrival_date">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Departure</label>
-              <input class="form-input" type="date" formControlName="departure_date">
+              <label class="form-label">Travel dates</label>
+              <input class="form-input custom-date" type="text" placeholder="Select date range" [appFlatpickrRange]="$any(leg)" [minDate]="getMinDate(i)">
+              <!-- We still need the controls in the form group, but FlatpickrDirective patches them -->
+              <input type="hidden" formControlName="arrival_date">
+              <input type="hidden" formControlName="departure_date">
             </div>
             <button type="button" class="btn-remove" (click)="removeLeg(i)" *ngIf="itinerary.length > 1">&times;</button>
           </div>
+          <button type="button" class="btn-add ghost-btn" (click)="addLeg()">+ Add stop</button>
         </div>
-      </div>
 
-      <div class="section-card config-card">
-        <h2><i class="icon-settings"></i> Preferences</h2>
-        <div class="form-group">
-          <label class="form-label">Accommodation Tier</label>
-          <select class="form-select" formControlName="budget_tier">
-            <option value="budget">Budget / Hostels</option>
-            <option value="balanced">Balanced / 3-4 Stars</option>
-            <option value="luxury">Luxury / Villas</option>
-          </select>
+        <div class="action-bar">
+          <div class="compact-pref" style="position: relative;">
+            <label class="form-label">Accommodation tier</label>
+            
+            <div class="dropdown-backdrop" *ngIf="isTierDropdownOpen" (click)="isTierDropdownOpen = false"></div>
+            
+            <div class="custom-dropdown" (click)="toggleTierDropdown()">
+              <div class="dropdown-value">{{ selectedTierLabel }}</div>
+              <span class="dropdown-arrow">▼</span>
+            </div>
+            
+            <div class="dropdown-menu" *ngIf="isTierDropdownOpen">
+              <div class="dropdown-item" (click)="selectTier('budget')">
+                <span class="item-title">Budget</span>
+                <span class="item-desc">Hostels & 2-star</span>
+              </div>
+              <div class="dropdown-item" (click)="selectTier('balanced')">
+                <span class="item-title">Standard</span>
+                <span class="item-desc">3-4 star hotels</span>
+              </div>
+              <div class="dropdown-item" (click)="selectTier('luxury')">
+                <span class="item-title">Premium</span>
+                <span class="item-desc">5-star & villas</span>
+              </div>
+            </div>
+            
+          </div>
+          <button type="submit" class="btn-primary btn-large" [disabled]="architectForm.invalid || isLoading">
+            <span *ngIf="!isLoading">Generate estimate</span>
+            <span *ngIf="isLoading">Calculating...</span>
+          </button>
         </div>
-      </div>
-
-      <div class="error-msg" *ngIf="error">{{error}}</div>
-
-      <button type="submit" class="btn-primary huge-btn" [disabled]="architectForm.invalid">
-        Generate Agentic Quote
-      </button>
-    </form>
-  </div>
-
-  <div class="loading-state" *ngIf="isLoading">
-    <div class="spinner"></div>
-    <h3>AI is orchestrating your trip...</h3>
-    <p>Searching flights, finding villas, and calculating logistics.</p>
-  </div>
-
-  <div class="result-container" *ngIf="quoteResult && !isLoading">
-    <div class="result-header">
-      <h2>The Blueprint</h2>
-      <p class="ai-reasoning">{{quoteResult.reasoning}}</p>
+      </form>
     </div>
 
-    <div class="shared-liability-card">
-      <h3>Shared Liability (Group Accommodation)</h3>
-      <div class="hotel-details">
-        <div class="hotel-info">
-          <h4>{{quoteResult.shared_accommodation_name}}</h4>
-          <p>Total Group Cost: <strong>${{quoteResult.shared_accommodation_total}}</strong></p>
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <p>Calculating estimate...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-banner" *ngIf="error">
+      {{ error }}
+    </div>
+
+    <!-- OPTIONS VIEW -->
+    <div class="options-view" *ngIf="viewState === 'options' && !isLoading">
+      <div class="section-header">
+        <h2><i class="icon-sparkles"></i> Review options</h2>
+        <button type="button" class="btn-secondary" (click)="goBack()">Back to details</button>
+      </div>
+      
+      <div class="options-grid">
+        <div class="option-card" *ngFor="let opt of quoteOptions">
+          <div class="opt-header">
+            <h3>{{opt.title}}</h3>
+            <div class="opt-price-tag">${{opt.shared_cost_per_person}} <span>/ person base</span></div>
+          </div>
+          
+          <div class="opt-hotel" *ngIf="opt.hotel_details">
+            <img *ngIf="opt.hotel_details.image_url" [src]="opt.hotel_details.image_url" alt="Hotel">
+            <div class="hotel-info">
+              <strong>{{opt.hotel_details.name}}</strong>
+              <span class="rating">★ {{opt.hotel_details.rating}}</span>
+            </div>
+            <div class="hotel-amenities">
+              <span class="badge" *ngFor="let am of opt.hotel_details.amenities">{{am}}</span>
+            </div>
+          </div>
+          
+          <p class="opt-reasoning">{{opt.reasoning}}</p>
+          
+          <button class="btn-primary select-btn" (click)="selectOption(opt)">Customize and select</button>
         </div>
-        <div class="cost-split">
-          <span class="label">Fair Share Split</span>
-          <span class="amount">${{quoteResult.shared_cost_per_person}} <span>/ person</span></span>
-        </div>
-        <a *ngIf="quoteResult.hotel_evidence" [href]="quoteResult.hotel_evidence" target="_blank" class="btn-outline">View Options</a>
       </div>
     </div>
 
-    <div class="matrix-card">
-      <h3>Individual Liability (The Quote Matrix)</h3>
-      <table class="premium-table">
-        <thead>
-          <tr>
-            <th>Traveler</th>
-            <th>Route Details</th>
-            <th>Flight Cost</th>
-            <th>Shared Cost</th>
-            <th>Total Cost</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let tq of quoteResult.traveler_quotes">
-            <td>
-              <div class="traveler-name">{{tq.name}}</div>
-              <div class="traveler-origin">{{tq.origin}}</div>
-            </td>
-            <td class="route-cell">{{tq.flight_route}}</td>
-            <td class="cost individual-cost">${{tq.individual_cost}}</td>
-            <td class="cost shared-cost">+ ${{tq.shared_cost}}</td>
-            <td class="cost total-cost">${{tq.total_cost}}</td>
-            <td>
-              <a *ngIf="tq.flight_evidence" [href]="tq.flight_evidence" target="_blank" class="btn-link">Verify</a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- MANUAL EDIT VIEW -->
+    <div class="manual-edit-view" *ngIf="viewState === 'manual-edit' && selectedOption && !isLoading">
+      <div class="section-header">
+        <h2><i class="icon-edit"></i> Fine-tune "{{selectedOption.title}}"</h2>
+        <div>
+          <button type="button" class="btn-secondary" (click)="goBack()" style="margin-right: 8px;">Back to options</button>
+          <button type="button" class="btn-primary" (click)="publishPool()">Publish pool</button>
+        </div>
+      </div>
+      
+      <div class="edit-layout">
+        <!-- Accommodation Override -->
+        <div class="section-card config-card">
+           <h3>Group accommodation</h3>
+           <div class="form-group">
+             <label class="form-label">Total accommodation cost (shared)</label>
+             <div class="input-with-icon">
+               <span class="currency-icon">$</span>
+               <input type="number" class="form-input" [(ngModel)]="selectedOption.shared_accommodation_total" (change)="selectedOption.shared_cost_per_person = selectedOption.shared_accommodation_total / travelers.length; recalculateTotal()">
+             </div>
+           </div>
+           <p class="cost-per-person">Cost per person: <strong>${{selectedOption.shared_cost_per_person}}</strong></p>
+           <a *ngIf="selectedOption.hotel_evidence" [href]="selectedOption.hotel_evidence" target="_blank" class="btn-link">View hotels</a>
+        </div>
+        
+        <!-- Individual Flights Override -->
+        <div class="matrix-card">
+          <h3>Individual flight costs</h3>
+          <table class="premium-table">
+            <thead>
+              <tr>
+                <th>Traveler</th>
+                <th>Flight itinerary</th>
+                <th>Flight cost</th>
+                <th>Total cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let tq of selectedOption.traveler_quotes; let i = index">
+                <td>
+                  <div class="traveler-name">{{tq.name}}</div>
+                  <div class="traveler-origin">{{tq.origin}}</div>
+                </td>
+                <td class="route-cell">
+                  <div class="verbose-flight" *ngFor="let f of tq.flights">
+                    <strong>{{f.airline}} {{f.flight_number}}</strong>
+                    <span>{{f.departure_time}} - {{f.arrival_time}} ({{f.duration}})</span>
+                    </div>
+                  <a *ngIf="tq.flight_evidence" [href]="tq.flight_evidence" target="_blank" class="btn-link sm">Search alternatives</a>
+                </td>
+                <td class="cost individual-cost">
+                  <div class="input-with-icon small">
+                    <span class="currency-icon">$</span>
+                    <input type="number" class="form-input" [(ngModel)]="tq.individual_cost" (change)="recalculateTotal()">
+                  </div>
+                </td>
+                <td class="cost total-cost">${{tq.total_cost}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+      </div>
     </div>
 
-    <button class="btn-secondary mt-4" (click)="quoteResult = null">Modify Itinerary</button>
   </div>
 </div>

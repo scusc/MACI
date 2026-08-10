@@ -1,65 +1,19 @@
-import { Component, inject } from '@angular/core';
+import re
+
+with open('src/app/features/trip-architect/trip-architect.component.ts', 'r') as f:
+    content = f.read()
+
+new_ts = """import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PoolService, AIQuoteRequest, AIQuoteResponse, AIQuoteOption, TravelerQuote } from '../../core/pool.service';
 import { ToastService } from '../../core/toast.service';
 
-
-import flatpickr from 'flatpickr';
-import { Directive, ElementRef, OnInit, OnDestroy, Input, ChangeDetectorRef } from '@angular/core';
-
-@Directive({
-  selector: '[appFlatpickrRange]',
-  standalone: true
-})
-export class FlatpickrRangeDirective implements OnInit, OnDestroy {
-  private el = inject(ElementRef);
-  private fpInstance: any;
-  
-  @Input('appFlatpickrRange') formGroup!: FormGroup;
-  @Input() minDate: string | Date = 'today';
-
-  ngOnInit() {
-    this.fpInstance = flatpickr(this.el.nativeElement, {
-      mode: 'range',
-      minDate: this.minDate,
-      dateFormat: 'Y-m-d',
-      onChange: (selectedDates: Date[], dateStr: string) => {
-        if (selectedDates.length === 2 && this.formGroup) {
-          // Format correctly for YYYY-MM-DD to avoid timezone shifts
-          const d1 = selectedDates[0];
-          const d2 = selectedDates[1];
-          const formatStr = (d: Date) => {
-              const m = (d.getMonth() + 1).toString().padStart(2, '0');
-              const day = d.getDate().toString().padStart(2, '0');
-              return `${d.getFullYear()}-${m}-${day}`;
-          };
-          this.formGroup.patchValue({
-            arrival_date: formatStr(d1),
-            departure_date: formatStr(d2)
-          });
-        } else if (this.formGroup) {
-           this.formGroup.patchValue({
-            arrival_date: '',
-            departure_date: ''
-          });
-        }
-      }
-    });
-  }
-
-  ngOnDestroy() {
-    if (this.fpInstance) {
-      this.fpInstance.destroy();
-    }
-  }
-}
-
 @Component({
   selector: 'app-trip-architect',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, FlatpickrRangeDirective],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './trip-architect.component.html',
   styleUrls: ['./trip-architect.component.scss']
 })
@@ -68,7 +22,6 @@ export class TripArchitectComponent {
   private poolService = inject(PoolService);
   private router = inject(Router);
   private toastService = inject(ToastService);
-  private cdr = inject(ChangeDetectorRef);
 
   viewState: 'input' | 'options' | 'manual-edit' = 'input';
 
@@ -77,27 +30,6 @@ export class TripArchitectComponent {
     itinerary: this.fb.array([this.createLeg()]),
     budget_tier: ['balanced']
   });
-
-  isTierDropdownOpen = false;
-
-  toggleTierDropdown() {
-    this.isTierDropdownOpen = !this.isTierDropdownOpen;
-  }
-
-  selectTier(tier: string) {
-    this.architectForm.patchValue({ budget_tier: tier });
-    this.isTierDropdownOpen = false;
-  }
-
-  get selectedTierLabel() {
-    const tier = this.architectForm.get('budget_tier')?.value;
-    switch (tier) {
-      case 'budget': return 'Budget';
-      case 'balanced': return 'Standard';
-      case 'luxury': return 'Premium';
-      default: return 'Standard';
-    }
-  }
 
   quoteOptions: AIQuoteOption[] = [];
   selectedOption: AIQuoteOption | null = null;
@@ -142,13 +74,6 @@ export class TripArchitectComponent {
     }
   }
 
-
-  getMinDate(index: number): string {
-    if (index === 0) return 'today';
-    const prevLeg = this.itinerary.at(index - 1).value;
-    return prevLeg.departure_date || 'today';
-  }
-
   addLeg() {
     this.itinerary.push(this.createLeg());
   }
@@ -173,26 +98,13 @@ export class TripArchitectComponent {
     
     this.poolService.getAIQuote(request).subscribe({
       next: (res) => {
-        try {
-          if (!res) throw new Error("Empty response");
-          this.quoteOptions = res.options || [];
-          // Fallback if backend returns an array directly
-          if (Array.isArray(res)) {
-              this.quoteOptions = res;
-          }
-          this.viewState = 'options';
-        } catch (e) {
-          console.error(e);
-          this.error = 'Invalid response format.';
-        } finally {
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        }
+        this.quoteOptions = res.options || [];
+        this.viewState = 'options';
+        this.isLoading = false;
       },
       error: (err) => {
         this.error = 'Failed to generate quote. Please try again.';
         this.isLoading = false;
-        this.cdr.detectChanges();
         console.error(err);
       }
     });
@@ -237,16 +149,19 @@ export class TripArchitectComponent {
       estimated_cost_per_person: this.selectedOption.shared_cost_per_person
     }).subscribe({
       next: () => {
-        this.isLoading = false;
-        this.cdr.detectChanges();
         this.toastService.success('Trip Pool created successfully!');
         this.router.navigate(['/pools']);
       },
       error: (err) => {
         this.toastService.error('Failed to create pool.');
         this.isLoading = false;
-        this.cdr.detectChanges();
       }
     });
   }
 }
+"""
+
+with open('src/app/features/trip-architect/trip-architect.component.ts', 'w') as f:
+    f.write(new_ts)
+
+print("Updated trip-architect.component.ts")

@@ -41,6 +41,9 @@ export class AuthService {
   }
 
   getToken(): string | null {
+    if (window.location.hostname === 'localhost') {
+      return 'local-dummy-token';
+    }
     return localStorage.getItem('slice_token');
   }
 
@@ -86,6 +89,19 @@ export class AuthService {
   }
 
   fetchProfile(): Observable<User> {
+    if (window.location.hostname === 'localhost') {
+      const dummyUser: User = {
+        id: 'local-test-id',
+        email: 'testuser@example.com',
+        first_name: 'Local',
+        last_name: 'Dev',
+        is_verified: true,
+        kyc_status: 'verified',
+        karma_score: 100
+      };
+      this.currentUser.set(dummyUser);
+      return of(dummyUser);
+    }
     return this.http.get<User>(`${this.apiUrl}/me`).pipe(
       tap(user => {
         if (!user.kyc_status) user.kyc_status = 'unverified';

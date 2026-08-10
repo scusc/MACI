@@ -48,6 +48,23 @@ export interface AIQuoteRequest {
   budget_tier: string;
 }
 
+export interface FlightDetails {
+  airline: string;
+  flight_number: string;
+  departure_time: string;
+  arrival_time: string;
+  duration: string;
+  cabin_class: string;
+}
+
+export interface HotelDetails {
+  name: string;
+  rating: number;
+  address: string;
+  image_url?: string;
+  amenities: string[];
+}
+
 export interface TravelerQuote {
   name: string;
   origin: string;
@@ -56,15 +73,23 @@ export interface TravelerQuote {
   shared_cost: number;
   total_cost: number;
   flight_evidence?: string;
+  flights: FlightDetails[]; // Detailed flights array
 }
 
-export interface AIQuoteResponse {
+export interface AIQuoteOption {
+  id: string;
+  title: string;
   shared_cost_per_person: number;
   shared_accommodation_name: string;
   shared_accommodation_total: number;
   hotel_evidence?: string;
+  hotel_details?: HotelDetails;
   traveler_quotes: TravelerQuote[];
   reasoning: string;
+}
+
+export interface AIQuoteResponse {
+  options: AIQuoteOption[];
 }
 
 @Injectable({
