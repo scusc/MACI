@@ -166,61 +166,9 @@ async def search_travel(
         except Exception as e:
             logger.warning(f"SerpAPI call failed: {e}")
 
-    # Fallback to default live options if SerpAPI returned no results or key is dummy
-    if not flights:
-        flights = [
-            FlightOption(
-                id="fl-101",
-                airline="Garuda Indonesia / Delta Air",
-                flight_number="GA-872",
-                departure_airport=f"{orig_clean}",
-                arrival_airport=f"{dest_clean}",
-                departure_time="08:30 AM",
-                arrival_time="04:45 PM (+1)",
-                duration="14h 15m",
-                price_usd=850.00 * passengers,
-                cabin_class="Economy",
-                available_seats=8
-            ),
-            FlightOption(
-                id="fl-202",
-                airline="Singapore Airlines",
-                flight_number="SQ-321",
-                departure_airport=f"{orig_clean}",
-                arrival_airport=f"{dest_clean}",
-                departure_time="11:15 PM",
-                arrival_time="07:20 AM (+2)",
-                duration="16h 05m",
-                price_usd=1120.00 * passengers,
-                cabin_class="Premium Economy",
-                available_seats=4
-            )
-        ]
-
-    if not hotels:
-        hotels = [
-            HotelOption(
-                id="ht-1",
-                name=f"Grand Horizon Resort & Co-Living {dest_clean}",
-                rating=4.9,
-                address=f"120 Ocean View Blvd, {destination}",
-                price_per_night_usd=220.0,
-                amenities=["Starlink WiFi", "Infinity Pool", "Coworking Lounge", "Free Breakfast"],
-                image_url="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000"
-            ),
-            HotelOption(
-                id="ht-2",
-                name=f"The Sanctuary Eco-Lodge {dest_clean}",
-                rating=4.8,
-                address=f"45 Jungle Ridge Path, {destination}",
-                price_per_night_usd=165.0,
-                amenities=["Organic Kitchen", "Yoga Deck", "High Speed Internet", "Spa"],
-                image_url="https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1000"
-            )
-        ]
-
     # 5. AI Summary Generation
-    ai_summary = f"Real-time route found from {orig_clean} to {destination}. Weather forecast is pleasant at {weather_data.temp_celsius if weather_data else 25}°C. Flight options starting from ${flights[0].price_usd:.2f}."
+    flight_summary = f"Flight options starting from ${flights[0].price_usd:.2f}." if flights else "No live flight options found for these dates."
+    ai_summary = f"Real-time route found from {orig_clean} to {destination}. Weather forecast is pleasant at {weather_data.temp_celsius if weather_data else 25}°C. {flight_summary}"
 
     return TravelSearchResponse(
         origin=origin,
@@ -256,28 +204,7 @@ async def generate_ai_itinerary(request: AIItineraryRequest):
         return {"destination": request.destination, "itinerary_text": response.content}
     except Exception as e:
         logger.warning(f"Azure OpenAI itinerary call failed: {e}")
-
-    # Fallback structured itinerary response
-    days_plan = []
-    for d in range(1, request.days + 1):
-        days_plan.append({
-            "day": d,
-            "title": f"Day {d}: Exploring {request.destination}",
-            "activities": [
-                f"Morning coffee & local culture walk in {request.destination}",
-                f"Afternoon co-working & group activity",
-                f"Sunset group dinner & local vibe check"
-            ]
-        })
-
-    return {
-        "destination": request.destination,
-        "itinerary": days_plan,
-        "insider_tips": [
-            f"Book local transportation early in {request.destination}.",
-            "Leverage Rally Skill Swap to exchange language skills with local hosts."
-        ]
-    }
+        raise HTTPException(status_code=503, detail="AI Itinerary Service is currently unavailable. Please try again later.")
 
 class Traveler(BaseModel):
     name: str
@@ -378,43 +305,10 @@ async def generate_ai_quote(request: AIQuoteRequest):
         except Exception as e:
             logger.warning(f"Flight search failed {orig}->{dest}: {e}")
             
-        # Fallback generation: deterministic pseudo-random flight based on route and date
-        import hashlib
-        seed = int(hashlib.md5(f"{orig}{dest}{date}".encode()).hexdigest(), 16)
-        
-        airlines = [
-            "United Airlines", "Delta Air Lines", "American Airlines", 
-            "Emirates", "Qatar Airways", "British Airways", "Lufthansa", 
-            "Singapore Airlines", "IndiGo", "Air India", "Qantas", "Cathay Pacific"
-        ]
-        airline = airlines[seed % len(airlines)]
-        flight_num = f"{airline[:2].upper()} {seed % 8999 + 1000}"
-        
-        dep_hour = 6 + (seed % 16)
-        dep_min = (seed % 12) * 5
-        dur_hours = 2 + (seed % 12)
-        dur_mins = (seed % 6) * 10
-        
-        arr_hour = (dep_hour + dur_hours) % 24
-        arr_min = (dep_min + dur_mins) % 60
-        if dep_min + dur_mins >= 60:
-            arr_hour = (arr_hour + 1) % 24
-            
-        dep_str = f"{dep_hour:02d}:{dep_min:02d}"
-        arr_str = f"{arr_hour:02d}:{arr_min:02d}"
-        
-        base_price = 250.0 + (seed % 600)
-        
+        # Return empty state instead of mock data
         return {
-            "price": base_price, 
-            "details": FlightDetails(
-                airline=airline, 
-                flight_number=flight_num,
-                departure_time=f"{date} {dep_str}", 
-                arrival_time=f"{date} {arr_str}",
-                duration=f"{dur_hours}h {dur_mins}m", 
-                cabin_class="Economy"
-            )
+            "price": 0.0, 
+            "details": None
         }
 
     async def fetch_hotel(dest: str, checkin: str, checkout: str, category: str) -> dict:
@@ -457,21 +351,10 @@ async def generate_ai_quote(request: AIQuoteRequest):
                 )
                 return {"name": h.title, "total": h.total_price, "details": details}
         except Exception as e:
-            pass
+            logger.warning(f"Hotel search failed for {dest}: {e}")
             
-        checkin_d = datetime.strptime(checkin, "%Y-%m-%d")
-        checkout_d = datetime.strptime(checkout, "%Y-%m-%d")
-        days = max(1, (checkout_d - checkin_d).days)
-        base_price = 100 if base_cat == 'budget' else (300 if base_cat == 'luxury' else 200)
-        
-        details = HotelDetails(
-            name=f"{category.replace('_alt', '').title()} Hotel in {dest}",
-            rating=4.0,
-            address=f"Central {dest}",
-            image_url="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000",
-            amenities=["WiFi"]
-        )
-        return {"name": details.name, "total": base_price * days * (group_size / 2), "details": details}
+        # Return empty state instead of mock data
+        return {"name": "Accommodation (Manual Search Required)", "total": 0.0, "details": None}
 
     options = []
     
