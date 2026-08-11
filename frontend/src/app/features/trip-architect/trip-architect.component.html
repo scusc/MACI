@@ -13,7 +13,7 @@
         </div>
         
         <div formArrayName="travelers" class="list-container">
-          <div *ngFor="let t of travelers.controls; let i=index" [formGroupName]="i" class="list-item">
+          <div *ngFor="let t of travelers.controls; let i=index" [formGroupName]="i" class="list-item" [style.zIndex]="100 - i" style="position: relative;">
             <div class="form-group">
               <label class="form-label">Name</label>
               <input class="form-input" formControlName="name" placeholder="e.g. Alice">
@@ -33,7 +33,7 @@
         
         
         <div formArrayName="itinerary" class="list-container">
-          <div *ngFor="let leg of itinerary.controls; let i=index" [formGroupName]="i" class="list-item">
+          <div *ngFor="let leg of itinerary.controls; let i=index" [formGroupName]="i" class="list-item" [style.zIndex]="100 - i" style="position: relative;">
             <div class="form-group" style="position: relative; z-index: 50;">
               <label class="form-label">Destination {{i + 1}}</label>
               <app-airport-search formControlName="destination"></app-airport-search>
