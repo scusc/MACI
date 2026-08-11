@@ -18,9 +18,9 @@
               <label class="form-label">Name</label>
               <input class="form-input" formControlName="name" placeholder="e.g. Alice">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="position: relative; z-index: 50;">
               <label class="form-label">Origin airport</label>
-              <input class="form-input" formControlName="origin" placeholder="e.g. JFK">
+              <app-airport-search formControlName="origin"></app-airport-search>
             </div>
             <button type="button" class="btn-remove" (click)="removeTraveler(i)" *ngIf="travelers.length > 1">&times;</button>
           </div>
@@ -34,9 +34,9 @@
         
         <div formArrayName="itinerary" class="list-container">
           <div *ngFor="let leg of itinerary.controls; let i=index" [formGroupName]="i" class="list-item">
-            <div class="form-group">
+            <div class="form-group" style="position: relative; z-index: 50;">
               <label class="form-label">Destination {{i + 1}}</label>
-              <input class="form-input" formControlName="destination" placeholder="e.g. Paris">
+              <app-airport-search formControlName="destination"></app-airport-search>
             </div>
             <div class="form-group">
               <label class="form-label">Travel dates</label>
@@ -98,98 +98,140 @@
 
     <!-- OPTIONS VIEW -->
     <div class="options-view" *ngIf="viewState === 'options' && !isLoading">
-      <div class="section-header">
-        <h2><i class="icon-sparkles"></i> Review options</h2>
-        <button type="button" class="btn-secondary" (click)="goBack()">Back to details</button>
+      <div class="section-header flex-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-900">Select your trip tier</h2>
+        <button type="button" class="btn-secondary" (click)="goBack()">Back</button>
       </div>
       
       <div class="options-grid">
-        <div class="option-card" *ngFor="let opt of quoteOptions">
-          <div class="opt-header">
-            <h3>{{opt.title}}</h3>
-            <div class="opt-price-tag">${{opt.shared_cost_per_person}} <span>/ person base</span></div>
-          </div>
+        <div class="option-card" *ngFor="let opt of quoteOptions" [class.recommended]="opt.title.includes('Recommended')">
+          <div class="badge-recommended" *ngIf="opt.title.includes('Recommended')">Recommended</div>
           
-          <div class="opt-hotel" *ngIf="opt.hotel_details">
-            <img *ngIf="opt.hotel_details.image_url" [src]="opt.hotel_details.image_url" alt="Hotel">
-            <div class="hotel-info">
-              <strong>{{opt.hotel_details.name}}</strong>
+          <div class="opt-image-wrapper">
+            <img *ngIf="opt.hotel_details?.image_url" [src]="opt.hotel_details.image_url" alt="Hotel">
+            <div class="opt-hotel-badge" *ngIf="opt.hotel_details">
               <span class="rating">★ {{opt.hotel_details.rating}}</span>
             </div>
-            <div class="hotel-amenities">
-              <span class="badge" *ngFor="let am of opt.hotel_details.amenities">{{am}}</span>
-            </div>
           </div>
           
-          <p class="opt-reasoning">{{opt.reasoning}}</p>
+          <div class="opt-content">
+            <div class="opt-header">
+              <h3>{{opt.title.replace('(Recommended)', '').trim()}}</h3>
+            </div>
+            
+            <div class="opt-pricing">
+              <div class="price-row">
+                <span class="price-label">Accommodation (per person)</span>
+                <span class="price-value">${{opt.shared_cost_per_person.toFixed(0)}}</span>
+              </div>
+              <div class="price-row subtle">
+                <span class="price-label">Hotel Total</span>
+                <span class="price-value">${{opt.shared_accommodation_total.toFixed(0)}}</span>
+              </div>
+            </div>
+            
+            <div class="opt-hotel-info" *ngIf="opt.hotel_details">
+              <strong>{{opt.hotel_details.name}}</strong>
+              <div class="hotel-amenities">
+                <span class="amenity" *ngFor="let am of opt.hotel_details.amenities">{{am}}</span>
+              </div>
+            </div>
+            
+            <p class="opt-reasoning">{{opt.reasoning}}</p>
+          </div>
           
-          <button class="btn-primary select-btn" (click)="selectOption(opt)">Customize and select</button>
+          <div class="opt-footer">
+            <button class="btn-primary select-btn" (click)="selectOption(opt)">Select & customize</button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- MANUAL EDIT VIEW -->
     <div class="manual-edit-view" *ngIf="viewState === 'manual-edit' && selectedOption && !isLoading">
-      <div class="section-header">
-        <h2><i class="icon-edit"></i> Fine-tune "{{selectedOption.title}}"</h2>
-        <div>
-          <button type="button" class="btn-secondary" (click)="goBack()" style="margin-right: 8px;">Back to options</button>
-          <button type="button" class="btn-primary" (click)="publishPool()">Publish pool</button>
+      <div class="section-header flex-between mb-6">
+        <div style="display: flex; align-items: center;">
+          <button type="button" class="btn-secondary" (click)="goBack()" style="margin-right: 12px; padding: 6px 12px;">&larr; Back</button>
+          <h2 class="text-2xl font-bold inline-block m-0">Customize: {{selectedOption.title.replace('(Recommended)', '').trim()}}</h2>
         </div>
+        <button type="button" class="btn-primary" (click)="publishPool()">Publish Pool</button>
       </div>
       
       <div class="edit-layout">
-        <!-- Accommodation Override -->
-        <div class="section-card config-card">
-           <h3>Group accommodation</h3>
-           <div class="form-group">
-             <label class="form-label">Total accommodation cost (shared)</label>
-             <div class="input-with-icon">
-               <span class="currency-icon">$</span>
-               <input type="number" class="form-input" [(ngModel)]="selectedOption.shared_accommodation_total" (change)="selectedOption.shared_cost_per_person = selectedOption.shared_accommodation_total / travelers.length; recalculateTotal()">
-             </div>
-           </div>
-           <p class="cost-per-person">Cost per person: <strong>${{selectedOption.shared_cost_per_person}}</strong></p>
-           <a *ngIf="selectedOption.hotel_evidence" [href]="selectedOption.hotel_evidence" target="_blank" class="btn-link">View hotels</a>
+        <!-- Main Content: Flights -->
+        <div class="edit-main">
+          <h3 class="section-subtitle">Traveler Flights</h3>
+          
+          <div class="traveler-card" *ngFor="let tq of selectedOption.traveler_quotes; let i = index">
+            <div class="tc-header">
+              <div class="tc-user">
+                <div class="avatar">{{tq.name.charAt(0).toUpperCase()}}</div>
+                <div class="user-info">
+                  <strong>{{tq.name}}</strong>
+                  <span>Flying from {{tq.origin}}</span>
+                </div>
+              </div>
+              <div class="tc-cost-input">
+                <label>Flight Cost</label>
+                <div class="input-with-icon">
+                  <span class="currency-icon">$</span>
+                  <input type="number" class="form-input elegant" [(ngModel)]="tq.individual_cost" (change)="recalculateTotal()">
+                </div>
+              </div>
+            </div>
+            
+            <div class="tc-flights">
+              <div class="flight-leg" *ngFor="let f of tq.flights">
+                <div class="airline-info">
+                  <strong>{{f.airline}}</strong> 
+                  <span class="flight-num">{{f.flight_number}}</span>
+                </div>
+                <div class="time-info">
+                  {{f.departure_time}} &mdash; {{f.arrival_time}} <span class="duration">({{f.duration}})</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="tc-footer" *ngIf="tq.flight_evidence">
+              <a [href]="tq.flight_evidence" target="_blank" class="link-btn">Verify on Google Flights ↗</a>
+            </div>
+          </div>
         </div>
         
-        <!-- Individual Flights Override -->
-        <div class="matrix-card">
-          <h3>Individual flight costs</h3>
-          <table class="premium-table">
-            <thead>
-              <tr>
-                <th>Traveler</th>
-                <th>Flight itinerary</th>
-                <th>Flight cost</th>
-                <th>Total cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let tq of selectedOption.traveler_quotes; let i = index">
-                <td>
-                  <div class="traveler-name">{{tq.name}}</div>
-                  <div class="traveler-origin">{{tq.origin}}</div>
-                </td>
-                <td class="route-cell">
-                  <div class="verbose-flight" *ngFor="let f of tq.flights">
-                    <strong>{{f.airline}} {{f.flight_number}}</strong>
-                    <span>{{f.departure_time}} - {{f.arrival_time}} ({{f.duration}})</span>
-                    </div>
-                  <a *ngIf="tq.flight_evidence" [href]="tq.flight_evidence" target="_blank" class="btn-link sm">Search alternatives</a>
-                </td>
-                <td class="cost individual-cost">
-                  <div class="input-with-icon small">
-                    <span class="currency-icon">$</span>
-                    <input type="number" class="form-input" [(ngModel)]="tq.individual_cost" (change)="recalculateTotal()">
-                  </div>
-                </td>
-                <td class="cost total-cost">${{tq.total_cost}}</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Sidebar: Accommodation & Summary -->
+        <div class="edit-sidebar">
+          <div class="summary-card">
+            <h3>Group Accommodation</h3>
+            
+            <div class="hotel-summary" *ngIf="selectedOption.hotel_details">
+              <strong>{{selectedOption.hotel_details.name}}</strong>
+              <a *ngIf="selectedOption.hotel_evidence" [href]="selectedOption.hotel_evidence" target="_blank" class="link-btn small mt-1">View Hotel ↗</a>
+            </div>
+            
+            <div class="form-group mt-4">
+              <label class="form-label text-sm">Total Shared Cost</label>
+              <div class="input-with-icon">
+                <span class="currency-icon">$</span>
+                <input type="number" class="form-input elegant large" [(ngModel)]="selectedOption.shared_accommodation_total" (change)="selectedOption.shared_cost_per_person = selectedOption.shared_accommodation_total / travelers.length; recalculateTotal()">
+              </div>
+            </div>
+            
+            <div class="split-breakdown">
+              <span>Cost per person (split {{travelers.length}} ways)</span>
+              <strong>${{selectedOption.shared_cost_per_person.toFixed(0)}}</strong>
+            </div>
+            
+            <hr class="divider">
+            
+            <div class="total-summary">
+              <span>Total Pool Goal</span>
+              <strong class="text-brand">
+                 ${{ getTotalPoolGoal().toFixed(0) }}
+              </strong>
+            </div>
+            <p class="helper-text">This includes the shared accommodation plus all individual flights.</p>
+          </div>
         </div>
-        
       </div>
     </div>
 

@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Va
 import { Router } from '@angular/router';
 import { PoolService, AIQuoteRequest, AIQuoteResponse, AIQuoteOption, TravelerQuote } from '../../core/pool.service';
 import { ToastService } from '../../core/toast.service';
+import { AirportSearchComponent } from '../../shared/components/airport-search/airport-search.component';
 
 
 import flatpickr from 'flatpickr';
@@ -59,7 +60,7 @@ export class FlatpickrRangeDirective implements OnInit, OnDestroy {
 @Component({
   selector: 'app-trip-architect',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, FlatpickrRangeDirective],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, FlatpickrRangeDirective, AirportSearchComponent],
   templateUrl: './trip-architect.component.html',
   styleUrls: ['./trip-architect.component.scss']
 })
@@ -218,6 +219,15 @@ export class TripArchitectComponent {
         total_flights += tq.individual_cost;
         tq.total_cost = tq.individual_cost + this.selectedOption!.shared_cost_per_person;
     });
+  }
+
+  getTotalPoolGoal(): number {
+    if (!this.selectedOption) return 0;
+    let total = this.selectedOption.shared_accommodation_total;
+    for (const tq of this.selectedOption.traveler_quotes) {
+      total += tq.individual_cost;
+    }
+    return total;
   }
   
   publishPool() {

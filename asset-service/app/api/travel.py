@@ -388,16 +388,31 @@ async def generate_ai_quote(request: AIQuoteRequest):
         }
 
     async def fetch_hotel(dest: str, checkin: str, checkout: str, category: str) -> dict:
+        query_map = {
+            "budget": f"Cheap hostels and budget hotels in {dest}",
+            "budget_alt": f"Top rated budget hotels in {dest}",
+            "balanced": f"3-star and 4-star hotels in {dest}",
+            "balanced_alt": f"Top rated 4-star hotels in {dest}",
+            "luxury": f"Luxury 5-star hotels and resorts in {dest}",
+            "luxury_alt": f"Ultra luxury 5-star resorts in {dest}"
+        }
+        query = query_map.get(category, f"Hotels in {dest}")
+        
+        # Determine base category for fallback pricing
+        base_cat = category.split("_")[0]
+        
         try:
             from app.services import serpapi_client
             hotels = await serpapi_client.search_inventory(
-                query=f"Hotels in {dest}",
+                query=query,
                 check_in=checkin,
                 check_out=checkout,
                 adults=group_size,
-                category=category
+                category=base_cat
             )
             if hotels:
+                # If we have multiple hotels, randomly shuffle or pick one based on a hash to ensure variety,
+                # but for simplicity, the targeted query should guarantee variety across tiers.
                 h = hotels[0]
                 checkin_d = datetime.strptime(checkin, "%Y-%m-%d")
                 checkout_d = datetime.strptime(checkout, "%Y-%m-%d")
@@ -417,10 +432,10 @@ async def generate_ai_quote(request: AIQuoteRequest):
         checkin_d = datetime.strptime(checkin, "%Y-%m-%d")
         checkout_d = datetime.strptime(checkout, "%Y-%m-%d")
         days = max(1, (checkout_d - checkin_d).days)
-        base_price = 100 if category == 'budget' else (300 if category == 'luxury' else 200)
+        base_price = 100 if base_cat == 'budget' else (300 if base_cat == 'luxury' else 200)
         
         details = HotelDetails(
-            name=f"{category.title()} Hotel in {dest}",
+            name=f"{category.replace('_alt', '').title()} Hotel in {dest}",
             rating=4.0,
             address=f"Central {dest}",
             image_url="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000",
@@ -428,13 +443,29 @@ async def generate_ai_quote(request: AIQuoteRequest):
         )
         return {"name": details.name, "total": base_price * days * (group_size / 2), "details": details}
 
-    # Generate 3 options: Budget, Balanced, Luxury
     options = []
-    tiers = [
-        ("opt_budget", "Budget Friendly", "budget", 0.7),
-        ("opt_balanced", "Balanced (Recommended)", "balanced", 1.0),
-        ("opt_luxury", "Luxury Villas", "luxury", 2.0)
-    ]
+    
+    # Generate 3 options based on selected budget tier to create an upsell ladder
+    bt = request.budget_tier.lower()
+    
+    if bt == "budget":
+        tiers = [
+            ("opt_budget_1", "Budget Option", "budget", 0.7),
+            ("opt_budget_2", "Budget Plus (Recommended)", "budget_alt", 0.85),
+            ("opt_upgrade", "Value Upgrade", "balanced", 1.0)
+        ]
+    elif bt == "luxury":
+        tiers = [
+            ("opt_luxury_1", "Luxury Option", "luxury", 1.8),
+            ("opt_luxury_2", "Premium Luxury (Recommended)", "luxury_alt", 2.2),
+            ("opt_upgrade", "Ultra Luxury Upgrade", "luxury", 3.0)
+        ]
+    else: # balanced
+        tiers = [
+            ("opt_balanced_1", "Balanced Option", "balanced", 0.9),
+            ("opt_balanced_2", "Balanced (Recommended)", "balanced_alt", 1.0),
+            ("opt_upgrade", "Luxury Upgrade", "luxury", 1.5)
+        ]
     
     # Run fetch tasks for all 3 options concurrently to save time, or do it sequentially but grouped
     for opt_id, opt_title, h_category, f_multiplier in tiers:
@@ -485,7 +516,13 @@ async def generate_ai_quote(request: AIQuoteRequest):
         encoded_hotel_dest = urllib.parse.quote(request.itinerary[0].destination)
         hotel_url = f"https://www.google.com/travel/hotels?q=Hotels%20in%20{encoded_hotel_dest}&checkin={request.itinerary[0].arrival_date}&checkout={request.itinerary[0].departure_date}"
         
-        reasoning = f"This {opt_title} option splits the ${int(total_accommodation_cost)} accommodation cost equally (${shared_cost_per_person} each). Flights are tailored individually to keep it fair for everyone's origin point."
+        # Dynamic comparison reasoning based on the tier
+        if "Upgrade" in opt_title:
+            reasoning = f"Want to treat yourselves? The {opt_title} is a step up from your '{bt}' preference. Splitting the ${int(total_accommodation_cost)} total gives you premium amenities for just a bit more!"
+        elif "Recommended" in opt_title:
+            reasoning = f"Our top pick! The {opt_title} offers the best value in your '{bt}' category, splitting the ${int(total_accommodation_cost)} cost equally (${shared_cost_per_person} each)."
+        else:
+            reasoning = f"This {opt_title} matches your '{bt}' preference perfectly, splitting the ${int(total_accommodation_cost)} accommodation cost equally. Flights are tailored individually to keep it fair."
         
         options.append(AIQuoteOption(
             id=opt_id,

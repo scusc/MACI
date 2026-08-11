@@ -1,0 +1,28 @@
+<div class="airport-search-wrapper" (click)="$event.stopPropagation()">
+  <input 
+    type="text" 
+    class="form-input" 
+    [placeholder]="'Search airport, city, or country...'" 
+    [value]="searchTerm"
+    (input)="onInput($event)"
+    (focus)="onFocus()">
+
+  <div class="dropdown-menu" *ngIf="isOpen">
+    <div class="empty-state" *ngIf="!isLoading && filteredGroups.length === 0">
+      No airports found. Try another term.
+    </div>
+
+    <div class="country-group" *ngFor="let group of filteredGroups">
+      <div class="country-header">{{ group.country }}</div>
+      
+      <div class="city-group" *ngFor="let cityGroup of group.cities">
+        <div class="city-header">{{ cityGroup.city }}</div>
+        
+        <div class="airport-item" *ngFor="let airport of cityGroup.airports" (click)="selectAirport(airport)">
+          <span class="airport-iata">{{ airport.iata }}</span>
+          <span class="airport-name">{{ airport.name }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
