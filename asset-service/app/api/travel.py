@@ -181,6 +181,45 @@ async def search_travel(
         ai_summary=ai_summary
     )
 
+class AIRefineTripRequest(BaseModel):
+    title: str
+    description: str
+
+class AIRefineTripResponse(BaseModel):
+    title: str
+    description: str
+
+@router.post("/ai-refine-trip", response_model=AIRefineTripResponse)
+async def refine_trip_details(request: AIRefineTripRequest):
+    """
+    Refine a trip title and description using Azure OpenAI.
+    """
+    try:
+        from app.services.ai_delegate import get_azure_openai_client
+        from langchain_core.messages import SystemMessage, HumanMessage
+        import json
+
+        llm = get_azure_openai_client()
+        sys_msg = SystemMessage(content="You are an expert travel marketing copywriter for the Rally Travel Platform. Your goal is to refine trip titles and descriptions to make them extremely engaging, catchy, and appealing to a group of friends. Respond with ONLY a valid JSON object containing exactly two keys: 'title' and 'description'. Do not use markdown formatting blocks.")
+        human_msg = HumanMessage(content=f"Please refine these draft trip details:\nTitle: {request.title}\nDescription: {request.description}")
+        
+        response = await llm.ainvoke([sys_msg, human_msg])
+        
+        content = response.content.strip()
+        if content.startswith("```json"):
+            content = content[7:-3].strip()
+        elif content.startswith("```"):
+            content = content[3:-3].strip()
+            
+        result = json.loads(content)
+        return AIRefineTripResponse(
+            title=result.get("title", request.title),
+            description=result.get("description", request.description)
+        )
+    except Exception as e:
+        logger.warning(f"Azure OpenAI refine call failed: {e}")
+        raise HTTPException(status_code=503, detail="AI Refinement Service is currently unavailable.")
+
 class AIItineraryRequest(BaseModel):
     destination: str
     days: int = 5

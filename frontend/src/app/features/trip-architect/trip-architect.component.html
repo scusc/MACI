@@ -235,5 +235,39 @@
       </div>
     </div>
 
+    <!-- PUBLISH MODAL OVERLAY -->
+    <div class="publish-modal-overlay" *ngIf="showPublishModal">
+      <div class="publish-modal-card">
+        <div class="modal-header">
+          <h2 class="text-xl font-bold m-0">Finalize Trip Details</h2>
+          <button type="button" class="close-btn" (click)="cancelPublish()">✕</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Trip Title</label>
+            <input type="text" class="elegant-input" [(ngModel)]="draftTitle" placeholder="e.g. The Ultimate Bali Escape" />
+          </div>
+          
+          <div class="form-group description-group">
+            <div class="label-row flex-between">
+              <label>Marketing Description</label>
+              <button type="button" class="btn-ai-refine" (click)="refineWithAI()" [disabled]="isRefining">
+                <span class="icon">✨</span>
+                {{ isRefining ? 'Refining...' : 'Refine with AI' }}
+              </button>
+            </div>
+            <textarea class="elegant-input" [(ngModel)]="draftDescription" rows="5" placeholder="Write a catchy description for your friends..."></textarea>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="cancelPublish()" [disabled]="isLoading">Cancel</button>
+          <button type="button" class="btn-primary" (click)="confirmPublish()" [disabled]="isLoading">
+            {{ isLoading ? 'Publishing...' : 'Confirm & Publish Pool' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

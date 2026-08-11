@@ -73,4 +73,11 @@ export class TravelService {
       travel_vibe: vibe
     });
   }
+
+  refineTripDetails(title: string, description: string): Observable<{ title: string; description: string }> {
+    return this.http.post<{ title: string; description: string }>(`${this.apiUrl}/ai-refine-trip`, {
+      title,
+      description
+    });
+  }
 }

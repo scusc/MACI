@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PoolService, AIQuoteRequest, AIQuoteResponse, AIQuoteOption, TravelerQuote } from '../../core/pool.service';
+import { TravelService } from '../../core/travel.service';
 import { ToastService } from '../../core/toast.service';
 import { AirportSearchComponent } from '../../shared/components/airport-search/airport-search.component';
 
@@ -70,6 +71,7 @@ export class TripArchitectComponent {
   private router = inject(Router);
   private toastService = inject(ToastService);
   private cdr = inject(ChangeDetectorRef);
+  private travelService = inject(TravelService);
 
   viewState: 'input' | 'options' | 'manual-edit' = 'input';
 
@@ -109,6 +111,12 @@ export class TripArchitectComponent {
 
   isLoading = false;
   error = '';
+
+  // Publish Modal State
+  showPublishModal = false;
+  draftTitle = '';
+  draftDescription = '';
+  isRefining = false;
 
   get travelers() {
     return this.architectForm.get('travelers') as FormArray;
@@ -234,20 +242,55 @@ export class TripArchitectComponent {
     if (!this.selectedOption) return;
     
     const destination = this.itinerary.at(0).value.destination;
+    
+    // Pre-fill defaults and open modal
+    this.draftTitle = `${destination} Trip (${this.selectedOption.title})`;
+    this.draftDescription = `Auto-generated itinerary based on ${this.selectedOption.title} tier. ${this.selectedOption.reasoning}`;
+    this.showPublishModal = true;
+  }
+
+  cancelPublish() {
+    this.showPublishModal = false;
+  }
+
+  refineWithAI() {
+    if (!this.draftTitle || !this.draftDescription) return;
+    this.isRefining = true;
+    this.travelService.refineTripDetails(this.draftTitle, this.draftDescription).subscribe({
+      next: (res) => {
+        this.draftTitle = res.title;
+        this.draftDescription = res.description;
+        this.isRefining = false;
+        this.cdr.detectChanges();
+        this.toastService.success('Trip details magically refined!');
+      },
+      error: (err) => {
+        this.isRefining = false;
+        this.cdr.detectChanges();
+        this.toastService.error('Failed to refine with AI.');
+      }
+    });
+  }
+
+  confirmPublish() {
+    if (!this.selectedOption) return;
+    
+    const destination = this.itinerary.at(0).value.destination;
     const start_date = this.itinerary.at(0).value.arrival_date;
     const end_date = this.itinerary.at(this.itinerary.length - 1).value.departure_date;
     
     this.isLoading = true;
     this.poolService.createTrip({
-      title: `${destination} Trip (${this.selectedOption.title})`,
+      title: this.draftTitle,
       destination: destination,
       start_date: start_date + 'T00:00:00Z',
       end_date: end_date + 'T00:00:00Z',
-      description: `Auto-generated itinerary based on ${this.selectedOption.title} tier. ${this.selectedOption.reasoning}`,
+      description: this.draftDescription,
       estimated_cost_per_person: this.selectedOption.shared_cost_per_person
     }).subscribe({
       next: () => {
         this.isLoading = false;
+        this.showPublishModal = false;
         this.cdr.detectChanges();
         this.toastService.success('Trip Pool created successfully!');
         this.router.navigate(['/pools']);
